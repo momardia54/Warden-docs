@@ -1,0 +1,39 @@
+/* Warden's accent: the blue of the dashboard's charts, with steps checked for contrast on light and dark surfaces. */
+:root {
+  --vp-c-brand-1: #1f63b8;
+  --vp-c-brand-2: #2a78d6;
+  --vp-c-brand-3: #2a78d6;
+  --vp-c-brand-soft: rgba(42, 120, 214, 0.14);
+  --vp-home-hero-name-color: var(--vp-c-text-1);
+}
+
+.dark {
+  --vp-c-brand-1: #6aa8f0;
+  --vp-c-brand-2: #3987e5;
+  --vp-c-brand-3: #2a78d6;
+  --vp-c-brand-soft: rgba(57, 135, 229, 0.16);
+}
+
+/* Screenshots: a hairline frame so they separate from the page in both themes. */
+.vp-doc img {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+}
+
+/* The dashboard screenshot under the home page's features, as wide as the feature grid. */
+.home-screenshot {
+  max-width: 1152px;
+  margin: 48px auto 64px;
+  padding: 0 24px;
+}
+.home-screenshot img {
+  width: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+}
+@media (min-width: 640px) {
+  .home-screenshot { padding: 0 48px; }
+}
+@media (min-width: 960px) {
+  .home-screenshot { padding: 0 64px; }
+}

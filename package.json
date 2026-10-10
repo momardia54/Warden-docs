@@ -1,0 +1,18 @@
+{
+  "name": "warden-docs",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Documentation website of Warden, the self-hosted licence manager for Cloudflare Workers.",
+  "license": "MIT",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs",
+    "preview": "vitepress preview docs",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

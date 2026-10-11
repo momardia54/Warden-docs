@@ -23,7 +23,7 @@ The public endpoints and the API never use cookies.
 
 1. The guard looks up the caller's address in the IP blocklist (cached for 30 seconds per instance) and applies the rate limits. A blocked caller receives 403, a limited one 429, before any licence is read.
 2. The licence is read by its key, with the status set that applies to it (its app's, its own, or the defaults).
-3. The effective status is computed: the stored status, or the status its expiry rule points to once the expiry date has passed.
+3. The effective status is computed: the stored status, or the status its expiry rule points to once the expiry date and the grace period have passed.
 4. The domain is checked against the allowed domains and the site limit.
 5. When the site sent `?version=`, the newest release it may download is compared with it.
 6. The response, which names the licence key, the domain and the site's nonce, is signed with the installation's Ed25519 key (`X-Warden-Signature-Ed25519` over the raw body, with `X-Warden-Key-Id`; the deprecated HMAC header is still added until 1.0.0) and returned. The check, a newly registered site and the caller's address are recorded after the response is sent, and the blocking rules are evaluated then.
@@ -32,8 +32,8 @@ The public endpoints and the API never use cookies.
 
 | Table | Holds |
 |---|---|
-| `licenses` | Key, status, expiry date, allowed domains, site limit, app, customer, public message, internal notes. |
-| `apps` | Products, with defaults for new licences. |
+| `licenses` | Key, status, expiry date, grace period, allowed domains, site limit, app, customer, public message, internal notes. |
+| `apps` | Products, with defaults for new licences and a grace period for all of their licences. |
 | `statuses` | Custom status sets of an app or a standalone licence. No rows means the built-in defaults. |
 | `files` | Files and releases of a licence or an app: release rule, version, channel, release notes, SHA-256, withdrawal. |
 | `activations` | Sites registered by checks, with the version and address each reported last. |
@@ -43,18 +43,20 @@ The public endpoints and the API never use cookies.
 | `ip_blocks`, `ip_events`, `refused_requests` | IP blocklist, events read by the blocking rules, counts of blocked and rate-limited requests. |
 | `settings` | Protection settings, the GitHub App's credentials, and the signing key (private key as a JWK; only the public key is ever shown). |
 | `release_sources`, `source_imports` | Connected repositories and the tags they published. |
+| `webhooks`, `webhook_deliveries` | Outgoing webhooks, and the outbox of their deliveries with each one's state and last result. |
 
 Migrations are bundled into the Worker and applied on the first request after a deploy.
 
 ## Source layout
 
 ```
-workers/app.ts                  entry point: migrations, routing, the daily scheduled task
+workers/app.ts                  entry point: migrations, routing, the scheduled task (every 10 minutes)
 app/routes/                     dashboard pages
 app/components/                 dashboard components
 app/lib/                        logic shared by the server, the dashboard and the tests
 app/server/check.server.ts      the check endpoint
 app/server/signing.server.ts    the installation's Ed25519 signing key
+app/server/webhooks.server.ts   outgoing webhooks: endpoints, the outbox, delivery and retries
 app/server/download.server.ts   gated downloads
 app/server/files.server.ts      R2 storage, checksums, releases
 app/server/guard.server.ts      IP blocklist and rate limits on the public endpoints

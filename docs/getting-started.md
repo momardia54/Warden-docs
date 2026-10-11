@@ -13,7 +13,7 @@ Cloudflare copies the Warden repository to your GitHub account, and creates:
 - the **Worker** that serves the dashboard, the API and the check URLs;
 - a **D1 database** named `<worker-name>-db`;
 - an **R2 bucket** for files, named `<worker-name>-files`;
-- a daily **Cron Trigger** that removes old check history.
+- a **Cron Trigger** that runs every 10 minutes: it sends webhook events and, once a day, removes old check history.
 
 R2 has to be activated once in your Cloudflare account (Cloudflare asks for a payment method, even for the free tier). Without it, everything works except files and releases, and the dashboard says so.
 

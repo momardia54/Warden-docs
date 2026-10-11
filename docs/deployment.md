@@ -1,6 +1,6 @@
 # Deployment
 
-Warden is one Cloudflare Worker with a D1 database, an R2 bucket and a daily Cron Trigger. There are two ways to deploy it.
+Warden is one Cloudflare Worker with a D1 database, an R2 bucket and a Cron Trigger. There are two ways to deploy it.
 
 ## With the Deploy button
 

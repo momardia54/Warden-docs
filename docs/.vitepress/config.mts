@@ -54,6 +54,7 @@ export default defineConfig({
           { text: "Publishing from GitHub", link: "/guide/repositories" },
           { text: "Protection", link: "/guide/protection" },
           { text: "Analytics", link: "/guide/analytics" },
+          { text: "Webhooks", link: "/guide/webhooks" },
         ],
       },
       {

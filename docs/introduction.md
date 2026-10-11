@@ -38,7 +38,7 @@ Warden **creates and manages** licences. **Enforcement lives in the site's code*
 ## What Warden does not do
 
 - **Take payments.** Your payment tool calls Warden's API, for example from a webhook, to create or renew licences.
-- **Send email.** Warden has no mail server; outgoing webhooks are on the [roadmap](/project/roadmap).
+- **Send email.** Warden has no mail server. Its [webhooks](/guide/webhooks) tell your own tools when a licence expires or enters its grace period, so they can send the reminders.
 - **Make a licence impossible to bypass.** Whoever controls a server can remove the check from the code on it. Warden makes a commercial arrangement clear and visible; it is not copy protection. See [Security](/project/security).
 
 ## Requirements

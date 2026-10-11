@@ -17,14 +17,23 @@ Requirements: Node.js 22.
 
 ```bash
 npm install
-npm run sync        # copy the guides from ../Warden (or WARDEN_DIR=/path/to/Warden)
-npm run dev         # http://localhost:5173, reloads on change
-npm run build       # static site in docs/.vitepress/dist; fails on broken links
-npm run preview     # serve the build
-npm run deploy      # build and deploy as the static Worker "warden-docs" (wrangler.jsonc)
+npm run sync          # copy the guides from the Warden working copy, ../Warden (or WARDEN_DIR=/path/to/Warden)
+npm run sync:release  # copy them from Warden's main branch on GitHub: the released version
+npm run dev           # http://localhost:5173, reloads on change
+npm run build         # static site in docs/.vitepress/dist; fails on broken links
+npm run preview       # serve the build
+npm run deploy        # build and deploy as the static Worker "warden-docs" (wrangler.jsonc)
 ```
 
-After a change in the Warden repository: `npm run sync`, check the result with `npm run build`, and commit the synced files.
+## Branches and publishing
+
+The site is a Worker connected to this repository (Workers Builds): build command `npm run build`, deploy command `npx wrangler deploy`, production branch `main`.
+
+- **`main` is the public site** and documents the **released** version of Warden, the one the Deploy button installs.
+- **`develop`** documents the next version: after a change in the Warden repository, `npm run sync`, check with `npm run build`, and commit the synced files. Pull requests and other branches get preview builds.
+- When Warden releases a version, merge `develop` into `main` here as well.
+
+`npm run sync` records the version and whether it is released (Warden's `main` on GitHub has it) in `docs/.vitepress/version.json`. A build of `main` (`WORKERS_CI_BRANCH=main`, or `DOCS_RELEASE=1`) stops with an error when the pages describe an unreleased version, so the public site never documents features an installation does not have. Unreleased builds show the version as "next" in the navigation bar. To publish a fix to the released documentation, branch from `main`, run `npm run sync:release`, and open a pull request into `main`.
 
 ## Licence
 

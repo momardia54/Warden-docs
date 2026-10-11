@@ -1,5 +1,13 @@
-import { defineConfig } from "vitepress"
-import { version } from "./version.json"
+import fs from "node:fs"
+import path from "node:path"
+import { defineConfig, type DefaultTheme } from "vitepress"
+import { released, version } from "./version.json"
+
+/** Leaves out sidebar entries whose page does not exist, such as a guide added after the version being built. */
+function existing(groups: DefaultTheme.SidebarItem[]): DefaultTheme.SidebarItem[] {
+  const docs = path.resolve(import.meta.dirname, "..")
+  return groups.map((g) => ({ ...g, items: g.items?.filter((i) => !i.link || fs.existsSync(path.join(docs, `${i.link}.md`))) }))
+}
 
 export default defineConfig({
   title: "Warden",
@@ -18,14 +26,14 @@ export default defineConfig({
       { text: "Guide", link: "/getting-started", activeMatch: "^/(getting-started|introduction|deployment|configuration|upgrading|upgrade-notes|local-development|guide/)" },
       { text: "API", link: "/reference/api", activeMatch: "^/reference/" },
       {
-        text: `v${version}`,
+        text: released ? `v${version}` : `v${version} (next)`,
         items: [
           { text: "Changelog", link: "/project/changelog" },
           { text: "Roadmap and versioning", link: "/project/roadmap" },
         ],
       },
     ],
-    sidebar: [
+    sidebar: existing([
       {
         text: "Introduction",
         items: [
@@ -73,7 +81,7 @@ export default defineConfig({
           { text: "Licence", link: "/project/licence" },
         ],
       },
-    ],
+    ]),
     search: { provider: "local" },
     outline: { level: [2, 3], label: "On this page" },
     socialLinks: [{ icon: "github", link: "https://github.com/momardia54/Warden" }],

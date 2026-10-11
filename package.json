@@ -7,8 +7,9 @@
   "license": "MIT",
   "scripts": {
     "sync": "node scripts/sync.mjs",
+    "sync:release": "node scripts/sync.mjs --release",
     "dev": "vitepress dev docs",
-    "build": "vitepress build docs",
+    "build": "node scripts/check-release.mjs && vitepress build docs",
     "preview": "vitepress preview docs",
     "deploy": "npm run build && wrangler deploy"
   },

@@ -2,7 +2,7 @@
 
 # Roadmap
 
-Warden is **pre-1.0** (current: 0.2.0 on `develop`, 0.1.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
+Warden is **pre-1.0** (current: 0.3.0 in progress on `develop`, 0.2.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
 
 This is a plan, not a promise. Order can change.
 
@@ -26,7 +26,7 @@ Warden uses [semantic versioning](https://semver.org/). The version is in `packa
 - Status **completed** (paid in full) and **files** in R2: per-file release rules by licence status, gated downloads, download log, upload by dashboard or API
 - API with keys and scopes, idempotent creation with `external_ref`, OpenAPI description
 
-## 0.2.0 (ready on `develop`, not released)
+### 0.2.0 (2026-10-10)
 
 - **Releases and updates**: versions, stable and beta channels, release notes, SHA-256 checksums, withdrawal, update offers in the check response, versions in use per site and per app
 - Dashboard rework: tabs, needs-attention queue with one-click extend, quick search, saved list views, CSV export
@@ -42,10 +42,10 @@ Version 1.0.0 freezes the check response and the API, so everything that would c
 
 ### 0.3.0: the contract
 
-- [ ] **Public-key signatures (Ed25519) on check responses.** Today the HMAC key is the licence key, which the site also holds, so the site's owner could forge a valid response. Sites then verify with a public key only. Must come before 1.0: it changes the verification code every site runs
-- [ ] **Signed release packages (Ed25519)**, so an updater can verify a package came from you, not only that it arrived intact
-- [ ] **API review and freeze**: remove the deprecated aliases (`in_force`, `not_in_force`, `licenses_in_force`, `?view=in_force`), check every name against the valid/invalid vocabulary, consistent errors and pagination on every list, final review of the tracks and source endpoints
-- [ ] **Upgrade notes** from 0.1 and 0.2, listing each breaking change and what to do
+- [x] **Public-key signatures (Ed25519) on check responses.** The HMAC key was the licence key, which the site also holds, so the site's owner could forge a valid response; sites now verify with a public key only, and a nonce rejects replayed answers. Must come before 1.0: it changes the verification code every site runs
+- [x] **Signed release packages (Ed25519)**, so an updater can verify a package came from you, not only that it arrived intact
+- [x] **API review and freeze**: remove the deprecated aliases (`in_force`, `not_in_force`, `licenses_in_force`, `?view=in_force`), check every name against the valid/invalid vocabulary, consistent errors and pagination on every list, final review of the tracks and source endpoints
+- [x] **Upgrade notes** from 0.1 and 0.2, listing each breaking change and what to do
 
 ### 0.4.0: trust
 
@@ -62,6 +62,7 @@ Version 1.0.0 freezes the check response and the API, so everything that would c
 
 ### 1.0.0: stable
 
+- [ ] Remove what 0.3.0 deprecated: the `X-Warden-Signature` header (HMAC) and `before` on `GET /licenses`
 - [ ] Freeze the check response and `/api/v1`; from here, only backward compatible changes within a major version
 
 ### After 1.0.0

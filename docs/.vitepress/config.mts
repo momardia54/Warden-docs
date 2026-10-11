@@ -15,7 +15,7 @@ export default defineConfig({
   themeConfig: {
     logo: "/logo.svg",
     nav: [
-      { text: "Guide", link: "/getting-started", activeMatch: "^/(getting-started|introduction|deployment|configuration|upgrading|local-development|guide/)" },
+      { text: "Guide", link: "/getting-started", activeMatch: "^/(getting-started|introduction|deployment|configuration|upgrading|upgrade-notes|local-development|guide/)" },
       { text: "API", link: "/reference/api", activeMatch: "^/reference/" },
       {
         text: `v${version}`,
@@ -39,6 +39,7 @@ export default defineConfig({
           { text: "Deployment", link: "/deployment" },
           { text: "Configuration", link: "/configuration" },
           { text: "Upgrading", link: "/upgrading" },
+          { text: "Upgrade notes", link: "/upgrade-notes" },
           { text: "Local development", link: "/local-development" },
         ],
       },

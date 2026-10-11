@@ -1,6 +1,6 @@
 # Deployment
 
-Warden is one Cloudflare Worker with a D1 database, an R2 bucket and a daily Cron Trigger. There are two ways to deploy it.
+Warden is one Cloudflare Worker with a D1 database, an R2 bucket and a Cron Trigger. There are two ways to deploy it.
 
 ## With the Deploy button
 
@@ -29,6 +29,14 @@ npx wrangler secret put SESSION_SECRET     # openssl rand -hex 32
 ::: warning Build without local secrets
 `npm run preview` copies `.dev.vars` into the build. Delete `.dev.vars` before a build you deploy, so local test credentials never reach production.
 :::
+
+## Preview builds of pull requests
+
+When the Worker is connected to a GitHub repository, Cloudflare builds every push and, for pull requests and branches other than the production branch, creates a **preview** with `wrangler preview`. Warden's `wrangler.jsonc` has a `previews` block that gives previews rate limit counters of their own.
+
+A preview has **no database and no file storage**: Cloudflare does not create them for previews automatically, and production's must never be used by unreleased code. A preview therefore shows a "Preview without a database" notice instead of the dashboard. A passing preview build confirms the code builds and uploads; merge the pull request to deploy it to production.
+
+To skip previews entirely, turn off builds for non-production branches in the build settings of your Worker in the Cloudflare dashboard.
 
 ## The database
 

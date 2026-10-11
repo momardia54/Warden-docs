@@ -2,7 +2,7 @@
 
 # Roadmap
 
-Warden is **pre-1.0** (current: 0.2.0 on `develop`, 0.1.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
+Warden is **pre-1.0** (current: 0.4.0 in progress on `develop`, 0.3.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
 
 This is a plan, not a promise. Order can change.
 
@@ -26,44 +26,47 @@ Warden uses [semantic versioning](https://semver.org/). The version is in `packa
 - Status **completed** (paid in full) and **files** in R2: per-file release rules by licence status, gated downloads, download log, upload by dashboard or API
 - API with keys and scopes, idempotent creation with `external_ref`, OpenAPI description
 
-## 0.2.0 (ready on `develop`, not released)
+### 0.2.0 (2026-10-10)
 
 - **Releases and updates**: versions, stable and beta channels, release notes, SHA-256 checksums, withdrawal, update offers in the check response, versions in use per site and per app
 - Dashboard rework: tabs, needs-attention queue with one-click extend, quick search, saved list views, CSV export
 - **Analytics**: valid and invalid checks, active sites and downloads per day; top licences, files and IP addresses
 - **Protection**: client IP addresses, IP blocklist, rate limits and blocking rules configured in the dashboard
-- **Publishing from GitHub**: a GitHub App created in two clicks (or a token and a webhook); version tags published as releases with a fixed package folder
+- **Release tracks**: what each licence status receives (updates, final build, maintenance), one track per status, licence-specific tracks
+- **Publishing from GitHub**: a GitHub App created in two clicks (or a token and a webhook); version tags published into a track, with a fixed package folder and optional tag prefixes
 - Consistent terminology (valid and invalid) across the dashboard, API and docs; earlier API field names kept as deprecated aliases
+
+### 0.3.0 (2026-10-11)
+
+- **Ed25519 signatures** on every check and download answer and on every release; sites verify with the installation's public key, and a nonce rejects replayed answers
+- **API review**: one paging scheme for every list, specific error codes, the 0.2.0 aliases removed
+- **Upgrade notes** from 0.1 and 0.2 (docs/upgrade-notes.md)
 
 ## Towards 1.0.0
 
-A proposed order; it can change.
+Version 1.0.0 freezes the check response and the API, so everything that would change them comes first. Order agreed on 2026-10-10; on 2026-10-11 product completeness moved before trust, so the security work comes last, on the finished product.
 
-### 0.3.0: operations
+### 0.4.0: product completeness
 
-- [ ] **Tests against a real Worker** in CI (today: unit tests with a local D1 stand-in, and manual runs)
-- [ ] **Webhooks out**: call a URL when a licence changes status, expires, or when a site has not checked for N days (replaces email)
-- [ ] **Grace period** per licence: report `valid: true` with a warning for N days after the expiry date
-- [ ] **Import** of licences from CSV (export is done)
+- [x] **Webhooks out**: call a URL when a licence changes status, expires, or a site has not checked for N days (replaces email)
+- [x] **Grace period** per licence or app: report `valid: true` with a warning for N days after the expiry date
+- [ ] **Public documentation site** (the `Warden-docs` repository, deployed) and the Deploy button verified on a clean account
 
-### 0.4.0: trust
+### 0.5.0: trust
 
-- [ ] **Public-key signatures** (Ed25519) so a site holds only a public key and cannot forge responses
-- [ ] **Signed releases** (Ed25519) so an updater can verify a package came from you, not only that it arrived intact
-- [ ] **Download limits** and time-limited, signed download links
-
-### 0.5.0: distribution
-
-- [ ] **More release sources**: GitLab and Bitbucket, a trigger on a raised `Version:` header (WordPress style) in pushed commits, and GitHub release assets for projects with a build step
-- [ ] **Staged rollouts**: offer a release to a percentage of sites first
-- [ ] **Larger files**: direct-to-R2 uploads for files over 100 MB, and range (resumable) downloads
+- [ ] **End-to-end tests on real Cloudflare**: the GitHub App flow with a real app, private repositories with a token, phone-width layout, and CI that deploys a throwaway Worker and runs the checks against it
+- [ ] **Backups and export**: documented and tested D1 export and restore, and a data export from the dashboard
+- [ ] **Dashboard sign-in hardening**: two-factor authentication for the admin, or documented use of Cloudflare Access in front of the dashboard
+- [ ] **An independent security review** of the check, download, webhook and API code
 
 ### 1.0.0: stable
 
-- [ ] Review of the whole API surface and the check response, then freeze
-- [ ] Remove the deprecated aliases (`in_force`, `not_in_force`, `licenses_in_force`, `?view=in_force`)
-- [ ] Upgrade notes from every 0.x version
-- [ ] **Docs site** and a one-click deploy button once the repository is public
+- [ ] Remove what 0.3.0 deprecated: the `X-Warden-Signature` header (HMAC) and `before` on `GET /licenses`
+- [ ] Freeze the check response and `/api/v1`; from here, only backward compatible changes within a major version
+
+### After 1.0.0
+
+- CSV import of licences, staged rollouts, files over 100 MB (direct-to-R2 uploads), download limits and signed download links, more release sources (GitLab, Bitbucket, a `Version:` header trigger, GitHub release assets)
 
 ## Later, if there is demand
 

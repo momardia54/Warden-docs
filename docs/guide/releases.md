@@ -2,11 +2,35 @@
 
 # Releases and updates
 
-Warden can deliver the updates of what you sell. A **release** is a file with a version. It is stored in R2 like any other file ([Files](./files.md)) and keeps the same release rule: the licence statuses in which it can be downloaded, and whether the site's domain must match. On top of that, a release has a channel, public release notes and a checksum, and the check endpoint tells each site whether a newer release is waiting for it.
+Warden can deliver the updates of what you sell. A **release** is a file with a version, stored in R2 like any other file ([Files](./files.md)). Releases are grouped in **tracks**: a track decides which licence statuses receive its releases. On top of that, a release has a channel, public release notes and a checksum, and the check endpoint tells each site whether a newer release is waiting for it.
 
-![Releases of an app: the latest stable release, a beta and a withdrawn release](/screenshots/releases.jpg)
+![The Releases tab of an app: the Updates track, for Active licences, with its releases](/screenshots/releases.jpg)
 
 A file **without** a version is an *attachment* (a manual, a notice). It can be downloaded but is never offered as an update.
+
+## Tracks
+
+A track is what a set of licence statuses receives. An app (or a standalone licence) has one or more tracks, for example:
+
+| Track | For licences that are | Receives |
+|---|---|---|
+| Updates | Active | Regular builds, with the licence check built in |
+| Final build | Completed | The licence-free build, once paid in full |
+| Maintenance | Suspended | A maintenance version while a payment is late |
+
+- **Each status belongs to one track at most**, so a status never has two packages. Warden refuses a track that claims a status another track serves, and names that track.
+- A licence is offered **the latest release of the track that serves its current status**, nothing else: a Completed licence receives the latest Final build even when Updates has a higher version. When you change a licence's status, what its site is offered changes with it.
+- **Versions are unique per track**, not per app: the Final build can be 1.0.0 while Updates is at 1.4.0, or both can be 1.4.0.
+- A track also sets the **domain check** of its releases.
+- A track receives releases by **upload**, or from a **connected repository** ([Publishing releases from a repository](./repositories.md)). Several tracks can be fed by one repository, told apart by tag prefix.
+- A licence of an app follows the app's tracks. It can have **tracks of its own**: for the statuses they serve, they replace the app's tracks (for example a custom build for one client); for the other statuses, the app's tracks still apply. The licence page says which track the licence receives now.
+- A status that no track serves receives no update.
+
+Create, rename and delete tracks on the *Releases* tab (*New track*, and the track's menu). Changing a track's statuses applies to all its releases at once. Deleting a track moves its releases to another track first.
+
+Files without a version (attachments) are not in a track: each one keeps its own release rule ([Files](./files.md)).
+
+**Earlier releases** (from before tracks existed) were put into tracks automatically, one per distinct release rule, so nobody gained or lost access. If two of them serve the same status, the *Releases* tab says so: edit the tracks until each status belongs to one.
 
 ## What a release has
 
@@ -16,10 +40,11 @@ A file **without** a version is an *attachment* (a manual, a notice). It can be 
 | **Channel** | `stable` (default) or `beta`. Sites receive stable releases unless they ask for the beta channel, in which case they receive the newest of both. |
 | **Release notes** | Public text (up to 10,000 characters) returned with the release, so a site can show "what's new" before installing. |
 | **Checksum** | The SHA-256 of the file, computed by Warden during the upload. Returned with the release and sent as the `X-Warden-Sha256` header of the download, so an updater can verify what it received. Files uploaded before checksums were introduced have none. |
+| **Signature** | Ed25519 signature of the checksum, made with the installation's signing key. Returned with the release (`signature`) and sent as the `X-Warden-Release-Signature` header of the download, so an updater can verify that the package was published by you ([below](#verifying-a-package)). `null` for a file without a checksum. |
 | **Withdrawn** | A withdrawn release is no longer offered, no longer listed, and its download returns HTTP 410. It stays on record and can be restored. Use it to pull a bad build without losing its history. |
 | **Internal notes** | For you only. Never sent to sites. |
 
-Releases live where the product lives: on the **app** for a product sold to many customers (every licence of the app sees them), or on a **licence** for a one-off project.
+Releases live where the product lives: on the **app** for a product sold to many customers (every licence of the app sees them), or on a **licence** for a one-off project or a custom build.
 
 ## Offering updates through the check
 
@@ -37,7 +62,11 @@ GET https://<your-worker>/check/<licence key>?domain=harborstudio.com&version=1.
   "name": "Harbor Studio website",
   "app": { "slug": "harbor-theme", "name": "Harbor Theme" },
   "expires_at": "2027-10-04T23:59:59.999Z",
+  "grace_ends_at": null,
   "checked_at": "2026-10-10T09:12:44.512Z",
+  "license_key": "WRD-7KQ4M-X2PHR-9TCVN-B3WZD",
+  "domain": "harborstudio.com",
+  "nonce": null,
   "update": {
     "current": "1.3.0",
     "available": true,
@@ -49,6 +78,7 @@ GET https://<your-worker>/check/<licence key>?domain=harborstudio.com&version=1.
       "changelog": "Faster gallery. Fixes the mobile menu.",
       "size": 3145728,
       "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "signature": "<Ed25519 signature of sha256, base64>",
       "released_at": "2026-10-08T14:03:11.000Z",
       "download_url": "https://<your-worker>/download/WRD-.../fil_...?domain=harborstudio.com"
     }
@@ -60,7 +90,7 @@ GET https://<your-worker>/check/<licence key>?domain=harborstudio.com&version=1.
 - `available` is `true` when `latest` is newer than `current`.
 - `download_url` already carries the domain, so the site can fetch it as is.
 - Add `&channel=beta` to receive beta releases too.
-- The whole response, `update` included, is signed with `X-Warden-Signature` ([Checking a licence from a site](./checking.md)).
+- The whole response, `update` included, is signed with the installation's Ed25519 key ([Checking a licence from a site](./checking.md#verifying-the-signature)).
 - The `update` block appears only when the site sends a valid `version`. Older site code that does not send one gets the same response as before.
 
 The same fields can be sent in a POST body: `{ "domain": "harborstudio.com", "version": "1.3.0", "channel": "beta" }`.
@@ -88,12 +118,12 @@ Through the API: `GET /api/v1/licenses/{id}/activations` returns each site's `ve
 
 ## Publishing a release
 
-**Dashboard:** open the app (or the licence), *Releases* tab, *Upload*. Choose the file, enter the version, pick the channel, write the release notes and choose the statuses it is available in. The list shows releases by version, newest first, with the current latest marked; use the menu of a release to edit it, copy its checksum, withdraw or restore it, or delete it.
+**Dashboard:** open the app (or the licence), *Releases* tab, *Upload*. Choose the file, enter the version, pick the channel and the **track**, and write the release notes. Each track lists its releases by version, newest first, with its latest marked; use the menu of a release to edit it (including moving it to another track), copy its checksum, withdraw or restore it, or delete it.
 
 **API:**
 
 ```bash
-curl -X PUT "https://<worker>/api/v1/apps/harbor-theme/files?name=harbor-theme-1.4.0.zip&version=1.4.0&changelog=Faster%20gallery." \
+curl -X PUT "https://<worker>/api/v1/apps/harbor-theme/files?name=harbor-theme-1.4.0.zip&version=1.4.0&track=Updates&changelog=Faster%20gallery." \
   -H "Authorization: Bearer $WARDEN_KEY" -H "Content-Type: application/zip" --data-binary @harbor-theme-1.4.0.zip
 
 # longer release notes, or a correction, afterwards
@@ -110,28 +140,54 @@ Run it from your build pipeline to publish every release automatically.
 
 **From a repository:** connect a GitHub repository to the app or licence, and every version tag you push is published as a release, with a fixed folder name inside the zip. See [Publishing releases from a repository](./repositories.md).
 
+## Verifying a package
+
+A release's `signature` is the Ed25519 signature of its `sha256`, the 64 lowercase hex characters as text, made with the installation's signing key ([Checking a licence from a site](./checking.md#verifying-the-signature)). Before installing a package, an updater:
+
+1. computes the SHA-256 of the file it downloaded, in lowercase hex;
+2. compares it with `sha256` from the signed check response (or the `X-Warden-Sha256` header);
+3. verifies `signature` (or the `X-Warden-Release-Signature` header) against that hex text with the public key.
+
+The checksum proves the file arrived intact; the signature proves it was published through your Warden installation and not replaced on the way or on a mirror. The check response that offered the release is signed too, so the version, checksum and signature it names come from you.
+
+From the command line (OpenSSL 3), with the public key saved in PEM form (`public_key_pem` of `GET /api/v1/signing-key`) as `warden.pem`:
+
+```bash
+openssl dgst -sha256 -r harbor-theme-1.4.0.zip | cut -d' ' -f1 | tr -d '\n' > package.sha256
+echo "<signature>" | base64 -d > package.sig
+openssl pkeyutl -verify -pubin -inkey warden.pem -rawin -in package.sha256 -sigfile package.sig
+```
+
 ## Example: an updater in WordPress
+
+`warden_signed()` is the helper from [Checking a licence from a site](./checking.md#verifying-the-signature).
 
 ```php
 function harbor_check_for_update( $key, $installed_version ) {
-    $url = 'https://your-worker.example/check/' . $key . '?domain=' . rawurlencode( wp_parse_url( home_url(), PHP_URL_HOST ) ) . '&version=' . rawurlencode( $installed_version );
-    $res = wp_remote_get( $url, [ 'timeout' => 10 ] );
-    if ( is_wp_error( $res ) || wp_remote_retrieve_response_code( $res ) >= 500 ) { return null; } // keep the last known state
+    $nonce = bin2hex( random_bytes( 16 ) );
+    $url   = 'https://your-worker.example/check/' . $key . '?domain=' . rawurlencode( wp_parse_url( home_url(), PHP_URL_HOST ) ) . '&version=' . rawurlencode( $installed_version ) . '&nonce=' . $nonce;
+    $res   = wp_remote_get( $url, [ 'timeout' => 10 ] );
+    if ( is_wp_error( $res ) ) { return null; } // keep the last known state
     $body = wp_remote_retrieve_body( $res );
-    if ( ! hash_equals( hash_hmac( 'sha256', $body, $key ), (string) wp_remote_retrieve_header( $res, 'x-warden-signature' ) ) ) { return null; }
+    if ( ! warden_signed( wp_remote_retrieve_header( $res, 'x-warden-signature-ed25519' ), $body ) ) { return null; }
     $result = json_decode( $body, true );
+    if ( $result['license_key'] !== $key || $result['nonce'] !== $nonce ) { return null; }
     return ! empty( $result['update']['available'] ) ? $result['update']['latest'] : null;
 }
 
 // After downloading the package with download_url( $latest['download_url'] ), verify it before installing:
-// hash_equals( $latest['sha256'], hash_file( 'sha256', $package ) )
+function harbor_package_ok( $package, $latest ) {
+    $hash = hash_file( 'sha256', $package );
+    return hash_equals( (string) $latest['sha256'], $hash ) && warden_signed( $latest['signature'], $hash );
+}
 ```
 
 Hook the result into the `pre_set_site_transient_update_themes` (or `_plugins`) filter to show the update in the WordPress admin, and install with the regular upgrader.
 
 ## Good practice
 
-- Upload each build with its version, and keep older releases: a licence that is not allowed the newest one (for example a release published only for Completed licences) is offered the newest one it is allowed.
+- Give each audience its own track (Updates, Final build, Maintenance) rather than mixing them: what a licence receives then follows from its status, with nothing to calculate.
+- Upload each build with its version, and keep older releases in the track: they stay on record, and withdrawing the newest one makes the previous one the latest again.
 - Use the beta channel for early builds and promote a build by changing its channel to stable.
 - Withdraw instead of deleting when a release turns out to be broken: sites stop being offered it, and you keep its record and download count.
-- Have the site verify the signature of the check and the checksum of the package before installing anything.
+- Have the site verify the signature of the check, and the checksum and signature of the package, before installing anything.

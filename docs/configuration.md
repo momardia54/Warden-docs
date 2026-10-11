@@ -32,20 +32,28 @@ Declared in `wrangler.jsonc`; the first deploy creates the resources.
 
 ## Scheduled task
 
-A Cron Trigger runs every day at 03:17 UTC. It:
+A Cron Trigger runs every 10 minutes (`*/10 * * * *`). Each run:
+
+- finds the [webhook](/guide/webhooks) events that come from the passing of time: grace periods that started, licences whose expiry rule took effect, valid licences without a check for 3 days;
+- sends webhook deliveries that are due, including retries.
+
+Once a day, in the run between 03:00 and 03:10 UTC, it also:
 
 - deletes check history older than 90 days, and clears the IP address of downloads older than 90 days;
 - deletes IP blocklist entries that expired more than 30 days ago, and blocking-rule events older than a day;
-- marks publishing jobs that never finished as failed.
+- marks publishing jobs that never finished as failed;
+- deletes webhook deliveries older than 30 days.
+
+It is a single Cron Trigger, so an installation uses one of the Cron Triggers your Cloudflare account allows.
 
 ## Settings in the dashboard
 
 | Where | What |
 |---|---|
 | Protection | Rate limits, blocking rules and the allowlist ([Protection](/guide/protection)). |
-| Integrations | The GitHub App ([Publishing from GitHub](/guide/repositories)). |
+| Integrations | The GitHub App ([Publishing from GitHub](/guide/repositories)) and outgoing [webhooks](/guide/webhooks). |
 | API keys | Keys for the REST API, with their scope ([API](/reference/api#authentication)). |
-| An app | Defaults for new licences, statuses, files and the connected repository. |
+| An app | Defaults for new licences, the grace period, statuses, files and the connected repository. |
 
 ## Security headers
 

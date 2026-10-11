@@ -13,7 +13,7 @@ Cloudflare copies the Warden repository to your GitHub account, and creates:
 - the **Worker** that serves the dashboard, the API and the check URLs;
 - a **D1 database** named `<worker-name>-db`;
 - an **R2 bucket** for files, named `<worker-name>-files`;
-- a daily **Cron Trigger** that removes old check history.
+- a **Cron Trigger** that runs every 10 minutes: it sends webhook events and, once a day, removes old check history.
 
 R2 has to be activated once in your Cloudflare account (Cloudflare asks for a payment method, even for the free tier). Without it, everything works except files and releases, and the dashboard says so.
 
@@ -57,6 +57,8 @@ function harbor_licence_check( $key ) {
     return json_decode( wp_remote_retrieve_body( $res ), true ); // [ 'valid' => true, 'status' => 'active', 'message' => '' ]
 }
 ```
+
+This minimal version trusts any answer. Before shipping, have the site verify the answer's signature with your installation's **public signing key** (licence page, *Integration* tab, *Public signing key*): copy the key into the site's code once, and it then rejects answers that did not come from your Warden.
 
 Decide in the code what an invalid licence does. Keep the last valid result when Warden cannot be reached, so an outage never takes a customer's site down. [Checking a licence from a site](/guide/checking) covers the response in full, signature verification and JavaScript.
 

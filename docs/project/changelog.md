@@ -4,9 +4,69 @@
 
 All notable changes, newest first. Warden follows [semantic versioning](https://semver.org/); while it is pre-1.0, a minor version (0.x.0) can change the API, the check response or the data model, and every such change is listed under **Changed** or **Removed** with what to do. Database migrations run by themselves on the first request after an update. See "Versioning" in [Roadmap](./roadmap.md).
 
-## 0.2.0 (unreleased)
+**Next, towards 1.0.0** (details in [Roadmap](./roadmap.md)):
 
-Not released yet: on the `develop` branch.
+- **0.4.0, completeness**: outgoing webhooks, grace period after expiry, public documentation site and a verified Deploy button
+- **0.5.0, trust**: end-to-end tests on real Cloudflare (GitHub App, private repositories, phone width, CI), backups and export, two-factor sign-in or Cloudflare Access, independent security review
+- **1.0.0**: the check response and the API are frozen
+
+## 0.4.0 (unreleased)
+
+Not released yet: on the `develop` branch. What to change on your side: [Upgrade notes](../upgrade-notes.md), section "0.3 to 0.4".
+
+### Added: grace period
+
+- A **grace period** keeps a licence valid for some days after its expiry date. During it, checks return `valid: true`, the stored status, `grace_ends_at`, and a reminder in `message` when the licence has no public message of its own; then the expiry rule of its status applies
+- Set it on an app (it applies to all of the app's licences, existing and new) or on a licence (overrides its app's; 0 for none). Dashboard: app form and licence form; the licence page shows the grace period and when it ends
+- API: `grace_days` on apps and licences (create and edit); licences also return `effective_grace_days` and `grace_ends_at`. New error code `invalid_grace_days`
+- Renewing a licence during its grace period extends it from its expiry date, so the grace days used are not given again
+- docs/statuses.md, section "Grace period"
+
+### Added: outgoing webhooks
+
+- **Webhooks** (Integrations page, or `/api/v1/webhooks`): Warden calls your URLs on `license.created`, `license.updated`, `license.status_changed`, `license.renewed`, `license.grace_period_started`, `license.expired`, `license.silent` (no check for 3 days) and `license.deleted`, with the licence as the API returns it
+- Requests are signed with the installation's Ed25519 key (`X-Warden-Signature-Ed25519`), carry an event id, and are sent right after the change. Failed deliveries are retried after 10 minutes, 30 minutes, 2, 6 and 24 hours, then marked failed
+- Dashboard: add, edit, pause and delete webhooks, see the last result and the recent deliveries of each, retry a delivery, send a test event
+- API: `GET|POST /webhooks`, `GET|PATCH|DELETE /webhooks/{id}`, `POST /webhooks/{id}/test`, `GET /webhooks/{id}/deliveries`, `POST /webhooks/{id}/deliveries/{delivery}/retry`
+- Migration 0014 (grace periods, webhooks and their deliveries); licences that had already expired or gone quiet before the upgrade are not reported
+- docs/webhooks.md
+
+### Changed
+
+- The Cron Trigger runs every 10 minutes instead of once a day, to find time-based events and send due deliveries; the clean-up still runs once a day. Still one Cron Trigger per installation
+
+## 0.3.0 (2026-10-11)
+
+What to change on your side: [Upgrade notes](../upgrade-notes.md), section "0.2 to 0.3".
+
+### Added: signatures
+
+- **Ed25519 signatures.** Each installation creates a signing key pair on first use (stored in D1). Every answer of the check and download endpoints is signed with it: `X-Warden-Signature-Ed25519` (over the raw body) and `X-Warden-Key-Id`. Sites verify with the public key, which cannot create signatures, so the site's owner can no longer fake a valid answer the way the licence-keyed HMAC allowed. Answers for unknown keys are signed too
+- The check response names what it answers: `license_key`, `domain` and `nonce`. A site that sends `nonce` (8 to 64 letters, digits, `.`, `_`, `~`, `-`) with its check and compares it rejects replayed answers
+- **Signed releases**: each release carries `signature`, the Ed25519 signature of its SHA-256, in the update offer, the download list and the API, and the downloaded file carries `X-Warden-Release-Signature`, so an updater can verify a package came from your installation before installing it
+- The public key is shown on every licence page (*Integration* tab, *Public signing key*) and returned by `GET /api/v1/signing-key` (raw base64 for libsodium, and PEM)
+- The download list includes `license_key` and `checked_at`
+- docs/checking.md and docs/releases.md: verification in PHP, JavaScript and OpenSSL; docs/upgrade-notes.md: what to change when upgrading from 0.1 and from 0.2
+
+### Changed: API (review before 1.0.0)
+
+- Every list answers `{ data, next }` and pages the same way: `limit` (1 to 100, default 50) and `cursor` (the previous page's `next`). Apps, files, activations, IP blocks and repository imports are now paged; statuses, tracks and GitHub repositories are always complete and answer `next: null`. An unknown cursor answers `422 invalid_cursor`
+- `GET /licenses`: the default page size is 50 (was 25), and `cursor` replaces `before`, which is accepted until 1.0.0
+- `GET /licenses/{id}/activity`: at most 100 per page (was 200), paged with `cursor`
+- Error codes name what was not found: `GET /analytics` answers `license_not_found` or `app_not_found` (was `not_found`), `DELETE /ip-blocks/{id}` answers `ip_block_not_found`. An unsupported method on `/protection` and `/ip-blocks` answers `405 method_not_allowed` instead of 404
+- docs/api.md lists every error code and the paging rules
+- New denied downloads are logged as "Download denied: …" (was "Download refused: …"); Analytics counts both
+
+### Deprecated
+
+- `X-Warden-Signature` (HMAC-SHA256 keyed with the licence key) is still sent and is removed in 1.0.0. Move site code to `X-Warden-Signature-Ed25519`
+- `before` on `GET /licenses`, replaced by `cursor`; removed in 1.0.0
+
+### Removed
+
+- The deprecated aliases announced in 0.2.0: `in_force` and `not_in_force` in `GET /stats` (use `valid`, `invalid`), `licenses_in_force` in apps (use `licenses_valid`), and the licence list addresses `?view=in_force` and `?view=not_in_force` (use `?view=valid`, `?view=invalid`)
+
+## 0.2.0 (2026-10-10)
 
 ### Added: dashboard
 
@@ -49,6 +109,17 @@ Not released yet: on the `develop` branch.
 - Migrations 0009 (IP addresses, blocklist, rejected request counts) and 0010 (settings, rule-based blocks, rule events)
 - docs/protection.md
 
+### Added: release tracks
+
+- A **track** is what a set of licence statuses receives, for example Updates for Active licences, a Final build for Completed ones and a Maintenance version for Suspended ones. Each status belongs to one track of an app or licence at most, so a licence is offered the latest release of exactly one track: the one that serves its current status, even when another track has a higher version
+- Releases belong to a track, which sets their statuses and domain check; changing a track applies to all its releases. Versions are unique per track, so two tracks can publish the same number. Files without a version (attachments) keep their own release rule
+- A licence of an app can have tracks of its own, which replace the app's tracks for the statuses they serve (a custom build for one client)
+- Each track can be fed by its own repository, or several tracks by one repository with **tag prefixes** (`v1.4.0` and `final-v1.4.0`); a tag goes to the track whose prefix it matches most specifically
+- Dashboard: the *Releases* tab groups releases by track, with *New track*, edit and delete (moving the releases), the repository of each track, and on a licence page the track it receives now. Uploads and edits choose a track instead of statuses
+- "Outdated sites" compares each site with the latest release its own licence is offered
+- API: `GET|POST .../tracks`, `GET|PATCH|DELETE .../tracks/{track}` under apps and licences; uploads take `track`; files return `track`; `/apps/{app}/versions` data gains `behind`
+- Migration 0013: existing releases are put into tracks (one per distinct release rule, so nobody gains or loses access) and connected repositories are attached to a track
+
 ### Added: publishing from a repository
 
 - **Integrations** page: *Create GitHub App* creates a GitHub App for the install through GitHub's app manifest flow (read access to contents and metadata, push events). Install it on accounts or organisations, then pick repositories from a list in the *Connect repository* dialog, private ones included, with no token or webhook to copy. Access tokens are requested per hour with the app's key; one webhook (`/hooks/github-app`) serves every repository, matched by repository id so renames are followed
@@ -57,10 +128,14 @@ Not released yet: on the `develop` branch.
 - Without the GitHub App, a repository can still be connected with an optional read-only access token and a webhook of its own, verified with a per-source secret
 - Recent tags with their state (in progress, published, skipped, failed) and the reason, **Retry**, **Publish a tag** for existing tags, pause and disconnect. A redelivered webhook publishes a tag once
 - Providers and triggers are a registry: further providers (for example GitLab) and triggers (for example a version header in a pushed file) can be added without a schema change
-- API: `GET|PUT|DELETE /apps/{app}/source`, `POST .../source/regenerate-secret`, `GET|POST .../source/imports`, `POST .../source/imports/{id}/retry`, and the same under `/licenses/{id}/source`. Webhook endpoint `POST /hooks/github/{source id}`
+- API: `GET|PUT|DELETE .../tracks/{track}/source`, `POST .../source/regenerate-secret`, `GET|POST .../source/imports`, `POST .../source/imports/{id}/retry`, under apps and licences. Webhook endpoint `POST /hooks/github/{source id}`
 - API: `GET /integrations/github`, `GET /integrations/github/repositories`; `PUT .../source` accepts `connection` (`app` or `token`)
 - Migrations 0011 (release sources and their imports) and 0012 (GitHub App installation and repository id of a source)
 - docs/repositories.md
+
+### Changed: layout
+
+- Dashboard pages with tables and charts (overview, licences, apps, an app, a licence, analytics, protection, API keys) use the full width of the window instead of stopping at 1,152 pixels. Forms and the Integrations page keep a readable width
 
 ### Changed: terminology
 
@@ -70,7 +145,7 @@ Not released yet: on the `develop` branch.
 
 ### Fixed
 
-- The OpenAPI description listed only the built-in statuses for `status` filters and bodies, and described `valid` as "true for active and completed"; both now reflect configurable statuses
+- Preview builds of pull requests (Cloudflare Workers Builds) failed with "Your Wrangler configuration is missing a `previews` block": `wrangler.jsonc` now gives previews rate limit counters of their own. Previews have no database by design, and show a notice saying so instead of "Database upgrade failed"
 - The OpenAPI description listed only the built-in statuses for `status` filters and bodies, and described `valid` as "true for active and completed"; both now reflect configurable statuses
 
 ## 0.1.0 (2026-10-04)

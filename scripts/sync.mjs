@@ -25,6 +25,8 @@ const PAGES = {
   "docs/repositories.md": "guide/repositories.md",
   "docs/protection.md": "guide/protection.md",
   "docs/analytics.md": "guide/analytics.md",
+  "docs/webhooks.md": "guide/webhooks.md",
+  "docs/upgrade-notes.md": "upgrade-notes.md",
   "docs/api.md": "reference/api.md",
   "Security.md": "project/security.md",
   "Roadmap.md": "project/roadmap.md",

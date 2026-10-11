@@ -8,7 +8,7 @@ Your install's version is shown in the dashboard's account menu and in `/api/v1/
 
 ## Before you upgrade
 
-1. Read the changelog sections between your version and the new one, especially **Changed** and **Removed**.
+1. Read the [upgrade notes](/upgrade-notes) for each version between yours and the new one: they list what to change in site code, API clients and bookmarks. The [changelog](/project/changelog) has every change.
 2. Export the database:
 
    ```bash

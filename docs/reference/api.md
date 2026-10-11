@@ -22,7 +22,31 @@ A key acts as your account. Scopes:
 | `manage` | also create, edit, set status, renew |
 | `full` | also delete a licence and regenerate its key |
 
-Errors: HTTP status plus `{ "error": { "code": "...", "message": "..." } }`. `401` bad or missing key, `403` the scope is too low, `404` not found, `422` invalid input, `413` body over 64 KB.
+## Errors
+
+Every error is the HTTP status plus `{ "error": { "code": "...", "message": "..." } }`. Branch on `code`, which is stable; `message` is for people and can change.
+
+| Status | Codes |
+|---|---|
+| `400` | `invalid_json` (the body is not a JSON object), `invalid_domain` |
+| `401` | `unauthorized`: missing or unknown key |
+| `403` | `forbidden`: the key's scope is too low |
+| `404` | `<thing>_not_found`: `license_not_found`, `app_not_found`, `file_not_found`, `track_not_found`, `status_not_found`, `source_not_found`, `import_not_found`, `activation_not_found`, `ip_block_not_found`, `webhook_not_found`, `delivery_not_found`, `github_not_connected`; `not_found` for an unknown endpoint |
+| `405` | `method_not_allowed` |
+| `409` | A conflict with the current state: `slug_taken`, `app_not_empty`, `status_in_use`, `statuses_in_use`, `statuses_not_customized`, `already_customized`, `license_in_app`, `status_in_another_track`, `track_not_empty`, `already_blocked`, `cannot_retry`, `too_many_webhooks` |
+| `413` | `too_large`: body over 64 KB (`upload_failed` for a file over 100 MB) |
+| `422` | `invalid_<field>` for the field at fault (`invalid_status`, `invalid_expires_at`, `invalid_grace_days`, `invalid_url`, `invalid_events`, `invalid_cursor`, …), `upload_failed`, `invalid_file`, `invalid_track`, `invalid_source`, `invalid_settings` |
+| `429` | `rate_limited`, with `Retry-After: 60` |
+| `501`, `502` | `upload_failed` (no R2 bucket), `github_unavailable` |
+
+## Lists and paging
+
+Every list answers `{ "data": [...], "next": ... }`. When `next` is not `null`, request the following page with `?cursor=<next>`; `limit` sets the page size (1 to 100, default 50). Lists that are never long (statuses, tracks, GitHub repositories, webhooks) are returned whole with `"next": null`. A `cursor` that is not the `next` of a previous page answers `422 invalid_cursor`.
+
+```bash
+curl "https://<worker>/api/v1/licenses?app=harbor-theme&limit=100" -H "Authorization: Bearer $WARDEN_KEY"
+curl "https://<worker>/api/v1/licenses?app=harbor-theme&limit=100&cursor=lic_..." -H "Authorization: Bearer $WARDEN_KEY"
+```
 
 ## The licence object
 
@@ -39,6 +63,9 @@ Errors: HTTP status plus `{ "error": { "code": "...", "message": "..." } }`. `40
   "stored_status": "active",
   "valid": true,
   "expires_at": "2027-10-04T16:50:49.988Z",
+  "grace_days": null,
+  "effective_grace_days": 7,
+  "grace_ends_at": null,
   "domains": [],
   "max_sites": 3,
   "sites_used": 1,
@@ -53,7 +80,7 @@ Errors: HTTP status plus `{ "error": { "code": "...", "message": "..." } }`. `40
 }
 ```
 
-`status` is what a site is told: the stored status, or the status its expiry rule points to once the expiry date has passed (by default Active becomes Expired). `stored_status` is what is saved. `valid` is `true` when that status is valid (`grants_access`). `app` is `null` for a standalone licence. `max_sites` is `null` when the number of sites is unlimited; `sites_used` is the number of sites that have registered.
+`status` is what a site is told: the stored status, or the status its expiry rule points to once the expiry date and any grace period have passed (by default Active becomes Expired). `stored_status` is what is saved. `valid` is `true` when that status is valid (`grants_access`). `app` is `null` for a standalone licence. `max_sites` is `null` when the number of sites is unlimited; `sites_used` is the number of sites that have registered. `grace_days` is the licence's own grace period (`null`: its app's; `0`: none), `effective_grace_days` the one in effect, and `grace_ends_at` is set while the licence is in its grace period ([Statuses](../guide/statuses.md#grace-period)).
 
 In every path below, `{id}` can be the licence id (`lic_...`) or the licence key (`WRD-...`).
 
@@ -62,12 +89,18 @@ In every path below, `{id}` can be the licence id (`lic_...`) or the licence key
 | Method and path | Scope | What it does |
 |---|---|---|
 | `GET /me` | read | The key's name and scope |
-| `GET /stats` | read | `total`, `valid`, `invalid`, `expiring_within_14_days`, `not_checked_for_3_days` and `by_status` (a count per status key). `in_force` and `not_in_force` are deprecated aliases of `valid` and `invalid` |
+| `GET /stats` | read | `total`, `valid`, `invalid`, `expiring_within_14_days`, `not_checked_for_3_days` and `by_status` (a count per status key) |
+| `GET /signing-key` | read | The installation's public signing key (below) |
 | `GET /analytics` | read | Checks and downloads per day, totals, invalid checks by reason, top licences and files (`days`, `app`, `license`; see [Analytics](../guide/analytics.md)) |
 | `GET /ip-blocks` | read | Blocked IP addresses and ranges ([Protection: IP blocklist, rate limits and blocking rules](../guide/protection.md)) |
 | `POST /ip-blocks` | manage | Block an address or range (`ip`, `reason`, `expires_at`) |
 | `DELETE /ip-blocks/{id}` | manage | Remove a block |
 | `GET /protection` | read | Rate limits, blocking rules and allowlist ([Protection: IP blocklist, rate limits and blocking rules](../guide/protection.md)) |
+| `GET /webhooks` | read | Outgoing webhooks ([Webhooks](../guide/webhooks.md)) |
+| `POST /webhooks`, `PATCH /webhooks/{id}`, `DELETE /webhooks/{id}` | full | Create, change or delete a webhook |
+| `POST /webhooks/{id}/test` | full | Send a test event now |
+| `GET /webhooks/{id}/deliveries` | read | Recent deliveries and their results |
+| `POST /webhooks/{id}/deliveries/{delivery}/retry` | full | Send a delivery again now |
 | `PATCH /protection` | full | Change protection settings (only what you send) |
 | `GET /statuses` | read | The built-in default statuses ([Statuses](../guide/statuses.md)) |
 | `GET /licenses` | read | List, newest first |
@@ -102,9 +135,9 @@ In the `/apps/{app}` paths, `{app}` is the app id (`app_...`) or its slug.
 
 ### List
 
-`GET /licenses?status=active&app=harbor-theme&q=harbor&external_ref=order-1042&limit=25&before=<next>`
+`GET /licenses?status=active&app=harbor-theme&q=harbor&external_ref=order-1042&limit=50&cursor=<next>`
 
-Returns `{ "data": [licence, ...], "next": "lic_..." | null }`. `status` is a status key (matched on the status reported to sites, so an expiry rule that has triggered counts). `app` limits the list to one app (id or slug). `q` searches name, customer, key, domains, `external_ref` and the app name. Pass `next` as `before` to get the following page. `limit` is 1 to 100.
+Returns `{ "data": [licence, ...], "next": "lic_..." | null }`, newest first. `status` is a status key (matched on the status reported to sites, so an expiry rule that has triggered counts). `app` limits the list to one app (id or slug). `q` searches name, customer, key, domains, `external_ref` and the app name. Paging as described in [Lists and paging](#lists-and-paging); `before` is the earlier name of `cursor`, accepted until 1.0.0.
 
 ### Create
 
@@ -117,6 +150,7 @@ Returns `{ "data": [licence, ...], "next": "lic_..." | null }`. `status` is a st
 | `customer_name` | string | Optional, up to 120 characters |
 | `customer_email` | string | Optional, a valid email address |
 | `max_sites` | integer or null | Maximum number of distinct sites (domains) that may use the licence. `null`: unlimited |
+| `grace_days` | integer or null | Days the licence stays valid after its expiry date, 0 to 365. `null`: its app's setting (none for a standalone licence); `0`: none |
 | `status` | string | A status key of the statuses that apply to the licence. Default: the default status of that set (the app's default status when issued under an app) |
 | `expires_at` | string or null | `YYYY-MM-DD` (end of that day, UTC) or an ISO date-time. `null` or omitted: no expiry date |
 | `duration_days` | integer | Alternative to `expires_at`: ends this many days from now (1 to 3650) |
@@ -177,16 +211,16 @@ Returns `201` and the file:
 
 ```json
 { "id": "fil_...", "name": "harbor-theme.zip", "version": "2.0.0", "channel": "stable", "changelog": "", "notes": "", "size": 800000,
-  "content_type": "application/zip", "sha256": "4c2a...", "withdrawn": false, "withdrawn_at": null,
+  "content_type": "application/zip", "sha256": "4c2a...", "signature": "base64...", "withdrawn": false, "withdrawn_at": null,
   "statuses": ["completed"], "check_domain": false, "available": false,
   "uploaded_at": "...", "download_count": 0, "last_download_at": null, "download_url": "https://<worker>/download/WRD-.../fil_..." }
 ```
 
-`available` says whether the file can be downloaded right now, ignoring the domain check. `sha256` is computed during the upload (`null` for files uploaded before checksums were introduced).
+`available` says whether the file can be downloaded right now, ignoring the domain check. `sha256` is computed during the upload (`null` for files uploaded before checksums were introduced). `signature` is the Ed25519 signature of `sha256` ([Releases and updates](../guide/releases.md#verifying-a-package)), `null` when there is no checksum.
 
 | Request | Permission | Description |
 |---|---|---|
-| `GET /licenses/{id}/files` | read | `{ "data": [file, ...] }` |
+| `GET /licenses/{id}/files` | read | `{ "data": [file, ...], "next" }`, newest first |
 | `PATCH /licenses/{id}/files/{fileId}` | manage | Change `statuses`, `check_domain`, `version`, `channel`, `changelog` or `notes`, or set `withdrawn` (`true` withdraws a release, `false` restores it). JSON body, only the fields sent |
 | `DELETE /licenses/{id}/files/{fileId}` | manage | Remove the file from storage |
 
@@ -200,7 +234,7 @@ The statuses are configurable at app level and licence level: see [Statuses](../
 
 A site registers when it checks the licence with its domain (`?domain=`). When the licence has a `max_sites` limit, checks from further sites are invalid (`site_limit_reached`) once it is reached.
 
-`GET /licenses/{id}/activations` returns `{ "max_sites": 3, "data": [ { "domain", "version", "first_seen_at", "last_seen_at", "check_count" } ] }`. `version` is the version the site last reported with its check (`?version=`), or `null`. `DELETE /licenses/{id}/activations/{domain}` releases a site; it can register again on its next check if the licence has room. See [Apps](../guide/apps.md#sites-and-the-site-limit).
+`GET /licenses/{id}/activations` returns `{ "max_sites": 3, "data": [ { "domain", "version", "first_seen_at", "last_seen_at", "check_count", "last_ip" } ], "next" }`. `version` is the version the site last reported with its check (`?version=`), or `null`. `DELETE /licenses/{id}/activations/{domain}` releases a site; it can register again on its next check if the licence has room. See [Apps](../guide/apps.md#sites-and-the-site-limit).
 
 ### Apps
 
@@ -227,27 +261,41 @@ An app is a product you license to many customers. See [Apps](../guide/apps.md) 
 }
 ```
 
-`POST /apps` and `PATCH /apps/{app}` take these fields: `name` (required on create), `slug` (generated from the name if omitted: lowercase letters, digits and single hyphens, 2 to 48 characters, unique), `description`, `default_status`, `default_duration_days` (1 to 3650, or `null` for no expiry), `default_max_sites` (1 or more, or `null` for unlimited), `default_message` and `notes`. A duplicate slug returns `409`.
+`POST /apps` and `PATCH /apps/{app}` take these fields: `name` (required on create), `slug` (generated from the name if omitted: lowercase letters, digits and single hyphens, 2 to 48 characters, unique), `description`, `default_status`, `default_duration_days` (1 to 3650, or `null` for no expiry), `default_max_sites` (1 or more, or `null` for unlimited), `default_message`, `grace_days` (1 to 365, or `null` for none; applies to every licence of the app without a setting of its own) and `notes`. A duplicate slug returns `409`.
 
 `DELETE /apps/{app}` needs the `full` permission and returns `409` (`app_not_empty`) while the app still has licences. It deletes the app's files.
 
-`licenses_valid` counts licences for which a check currently returns `valid: true`. `licenses_in_force` is a deprecated alias with the same value. `latest_version` is the highest stable version among the app's current releases (withdrawn releases excluded).
+`licenses_valid` counts licences for which a check currently returns `valid: true`. `latest_version` is the highest stable version among the app's current releases (withdrawn releases excluded).
 
 `GET /apps/{app}/versions` returns `{ "latest_version", "sites", "outdated", "data": [ { "version", "sites", "outdated" } ] }`: how many sites run each reported version, newest first (`version` is `null` for sites that never reported one).
 
 `PUT /apps/{app}/files` uploads a file that every licence of the app can see, with the same body, query parameters and release rule as a licence file (below). The file JSON of an app has no `available` or `download_url`, because the download URL contains a licence key; licences get the URL from `GET /download/<key>` ([Files](../guide/files.md)).
 
+### Release tracks
+
+A track is what a set of licence statuses receives ([Releases and updates](../guide/releases.md#tracks)). Each status belongs to one track of an app or licence at most. Endpoints under `/apps/{app}/tracks` and `/licenses/{id}/tracks`; `{track}` is a track's id or name.
+
+| Method and path | Scope | Description |
+|---|---|---|
+| `GET .../tracks` | read | `{ data: [{ id, name, statuses, check_domain, position, releases, source }], next: null, conflicts }`. For a licence, also `app_tracks` and `receives`: `{ status, track, name, inherited }`, the track that serves its current status |
+| `POST .../tracks` | manage | Create: `{ "name": "Final build", "statuses": ["completed"], "check_domain": true }`. `409 status_in_another_track` when a status is already served |
+| `GET .../tracks/{track}` | read | One track |
+| `PATCH .../tracks/{track}` | manage | Change `name`, `statuses`, `check_domain`, `position`. The statuses and domain check apply to all its releases |
+| `DELETE .../tracks/{track}?move_to={track}` | full | Delete; its releases move to `move_to` (required while it has releases) and its repository is disconnected |
+
+Uploads (`PUT .../files`) take `track` (id or name) for a release. Without it: the only track, or a new track *Releases* when there is none; with several tracks, `track` is required. `statuses` on a release upload picks the track with exactly those statuses, or creates one. `PATCH .../files/{fileId}` takes `track` to move a release; `statuses` and `check_domain` apply to attachments only. Files return `track` (null for an attachment).
+
 ### Release source
 
-A GitHub repository connected to an app or a licence publishes each version tag as a release, through the install's GitHub App or with an access token and a webhook of its own. Endpoints under `/apps/{app}/source` and `/licenses/{id}/source`:
+A track can be fed by a GitHub repository, through the install's GitHub App or with an access token and a webhook of its own. Endpoints under `.../tracks/{track}/source`:
 
 | Method and path | Scope | Description |
 |---|---|---|
 | `GET .../source` | read | The connected repository; `webhook_secret` only for `manage` and `full` keys, the access token never (`has_token`) |
-| `PUT .../source` | manage | Connect or edit: `connection` (`app` or `token`), `provider`, `repository`, `trigger`, `package_folder`, `statuses`, `check_domain`, `token`, `enabled` (201 when connected, 200 when edited). A new source uses `app` when the GitHub App is connected and no token is sent |
+| `PUT .../source` | manage | Connect or edit: `connection` (`app` or `token`), `provider`, `repository`, `trigger`, `tag_prefix`, `package_folder`, `token`, `enabled` (201 when connected, 200 when edited). A new source uses `app` when the GitHub App is connected and no token is sent |
 | `DELETE .../source` | manage | Disconnect; published releases stay |
 | `POST .../source/regenerate-secret` | manage | Replace the webhook secret |
-| `GET .../source/imports` | read | Latest tags: `{ id, tag, version, commit, state, detail, file_id, started_at, finished_at }`, `state` is `pending`, `imported`, `skipped` or `failed` |
+| `GET .../source/imports` | read | Tags, newest first, paged: `{ id, tag, version, commit, state, detail, file_id, started_at, finished_at }`, `state` is `pending`, `imported`, `skipped` or `failed` |
 | `POST .../source/imports` | manage | Publish an existing tag: `{ "tag": "v1.4.0" }` (202; runs in the background) |
 | `POST .../source/imports/{id}/retry` | manage | Retry a failed or skipped tag |
 
@@ -256,13 +304,25 @@ The GitHub App (created in the dashboard under Integrations):
 | Method and path | Scope | Description |
 |---|---|---|
 | `GET /integrations/github` | read | `{ connected, app, installations }`, without the app's key or secrets |
-| `GET /integrations/github/repositories` | read | `{ data: [{ id, full_name, private, account }] }`: the repositories the app can access |
+| `GET /integrations/github/repositories` | read | `{ data: [{ id, full_name, private, account }], next: null }`: the repositories the app can access |
 
 Details, including the webhook setup: [Publishing releases from a repository](../guide/repositories.md).
 
 ### Activity
 
-`GET /licenses/{id}/activity?limit=50` returns `{ "data": [ { "at", "event": "check" | "change" | "download", "status", "domain", "ip", "detail" } ] }`, newest first. `ip` is the caller of a check or a download (null for changes, and after 90 days). Sites (`/activations`) include `last_ip`.
+`GET /licenses/{id}/activity?limit=50` returns `{ "data": [ { "at", "event": "check" | "change" | "download", "status", "domain", "ip", "detail" } ], "next" }`, newest first, paged with `cursor`. `ip` is the caller of a check or a download (null for changes, and after 90 days). Sites (`/activations`) include `last_ip`.
+
+### Signing key
+
+`GET /signing-key` returns the installation's public Ed25519 key, which signs check and download responses and releases ([Checking a licence from a site](../guide/checking.md#verifying-the-signature)):
+
+```json
+{ "algorithm": "Ed25519", "key_id": "3f9c0a7d51e2b846", "public_key": "base64 of the 32-byte key", "public_key_pem": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----", "created_at": "2026-10-11T09:00:00.000Z" }
+```
+
+Put `public_key` (libsodium, PHP) or `public_key_pem` (OpenSSL, Node.js) in the site's code. The private key is never returned.
+
+### Rate limit
 
 Each API key is rate limited (600 requests per minute by default, set under Protection). Over the limit the API answers `429` with `Retry-After: 60` and the code `rate_limited`.
 

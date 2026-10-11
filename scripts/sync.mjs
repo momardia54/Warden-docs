@@ -53,7 +53,7 @@ const readText = (file) => read(file).toString("utf8")
 const exists = (file) => {
   if (!ref) return fs.existsSync(path.join(warden, file))
   try {
-    git("cat-file", "-e", `${ref}:${file}`)
+    execFileSync("git", ["-C", warden, "cat-file", "-e", `${ref}:${file}`], { stdio: "ignore" })
     return true
   } catch {
     return false

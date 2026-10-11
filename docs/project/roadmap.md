@@ -2,7 +2,7 @@
 
 # Roadmap
 
-Warden is **pre-1.0** (current: 0.4.0 in progress on `develop`, 0.3.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
+Warden is **pre-1.0** (current: 0.5.0 in progress on `develop`, 0.4.0 released). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways.
 
 This is a plan, not a promise. Order can change.
 
@@ -42,21 +42,22 @@ Warden uses [semantic versioning](https://semver.org/). The version is in `packa
 - **API review**: one paging scheme for every list, specific error codes, the 0.2.0 aliases removed
 - **Upgrade notes** from 0.1 and 0.2 (docs/upgrade-notes.md)
 
+### 0.4.0 (2026-10-11)
+
+- **Grace period** per app or licence, with `grace_ends_at` and a reminder in the check response
+- **Outgoing webhooks**: eight licence events, signed with the installation's key, retried for about a day, with a delivery log
+- **Public documentation site** (the `Warden-docs` repository), publishing the documentation of the released version
+
 ## Towards 1.0.0
 
 Version 1.0.0 freezes the check response and the API, so everything that would change them comes first. Order agreed on 2026-10-10; on 2026-10-11 product completeness moved before trust, so the security work comes last, on the finished product.
-
-### 0.4.0: product completeness
-
-- [x] **Webhooks out**: call a URL when a licence changes status, expires, or a site has not checked for N days (replaces email)
-- [x] **Grace period** per licence or app: report `valid: true` with a warning for N days after the expiry date
-- [ ] **Public documentation site** (the `Warden-docs` repository, deployed) and the Deploy button verified on a clean account
 
 ### 0.5.0: trust
 
 - [ ] **End-to-end tests on real Cloudflare**: the GitHub App flow with a real app, private repositories with a token, phone-width layout, and CI that deploys a throwaway Worker and runs the checks against it
 - [ ] **Backups and export**: documented and tested D1 export and restore, and a data export from the dashboard
 - [ ] **Dashboard sign-in hardening**: two-factor authentication for the admin, or documented use of Cloudflare Access in front of the dashboard
+- [ ] **Complete OpenAPI description**: a schema for every response (no prose-only responses), the list envelope and every error code, the public `/check` and `/download` endpoints with their signature headers, the webhook payload, deprecated parts marked; a test that validates real responses against it, and a published `openapi.json` in the repository and on the documentation site
 - [ ] **An independent security review** of the check, download, webhook and API code
 
 ### 1.0.0: stable

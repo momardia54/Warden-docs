@@ -58,6 +58,8 @@ function harbor_licence_check( $key ) {
 }
 ```
 
+This minimal version trusts any answer. Before shipping, have the site verify the answer's signature with your installation's **public signing key** (licence page, *Integration* tab, *Public signing key*): copy the key into the site's code once, and it then rejects answers that did not come from your Warden.
+
 Decide in the code what an invalid licence does. Keep the last valid result when Warden cannot be reached, so an outage never takes a customer's site down. [Checking a licence from a site](/guide/checking) covers the response in full, signature verification and JavaScript.
 
 ## 6. Next steps

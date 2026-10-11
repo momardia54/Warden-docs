@@ -4,11 +4,13 @@
 
 Files can belong to a single licence, or to an **app** and be shared by every licence of that app ([Apps](./apps.md)). Each file has a **release rule**: the licence statuses in which it can be downloaded. Files are stored privately in R2 and served by the Worker only when the rule is met.
 
-![Editing a release and the statuses it is available in](/screenshots/edit-file.jpg)
+![Editing a release: version, channel, release notes and track](/screenshots/edit-file.jpg)
 
 A file with a **version** is a release: it is offered to sites as an update, with a channel, release notes and a checksum. See [Releases and updates](./releases.md). A file without a version is an attachment.
 
 ## Release rule
+
+A **release** (a file with a version) takes its release rule from its **track** ([Releases and updates](./releases.md#tracks)): change the track's statuses and all its releases follow. An **attachment** (a file without a version, such as a manual or a notice) has a release rule of its own, described here.
 
 | Setting | Meaning |
 |---|---|

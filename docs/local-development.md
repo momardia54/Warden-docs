@@ -54,3 +54,7 @@ rm -rf .wrangler/state build
 - Work on the `develop` branch; `main` is what the Deploy button installs.
 - A change includes its documentation (the guide in `docs/`, `CHANGELOG.md`, and `Security.md` or `Roadmap.md` when relevant), its tests, and a new migration when the schema changes. Migrations that have been released are never edited.
 - Interface text uses one vocabulary: a check is *valid* or *invalid*; protection uses *IP blocklist*, *allowlist*, *rate limit* and *blocking rule*.
+
+## Seeded local review
+
+Run `npm run review` inside Warden with Node 22. It starts port 5180, seeds generic demo apps and sample release archives, a template, and licences with shared and separate expiry dates. The terminal prints a temporary admin password. Credentials remain in process memory and the seeding API key is revoked after setup. Keep the terminal open while reviewing. Remove an existing `.dev.vars` first if it overrides process environment credentials. No remote deployment is performed.

@@ -57,4 +57,4 @@ rm -rf .wrangler/state build
 
 ## Seeded local review
 
-Run `npm run review` inside Warden with Node 22. It starts port 5180, seeds generic demo apps and sample release archives, a template, and licences with shared and separate expiry dates. The terminal prints a temporary admin password. Credentials remain in process memory and the seeding API key is revoked after setup. Keep the terminal open while reviewing. Remove an existing `.dev.vars` first if it overrides process environment credentials. No remote deployment is performed.
+Run `npm run review` inside Warden with Node 22. It starts port 5180, seeds generic demo apps and sample release archives, a template, and licences with shared and separate expiry dates. The terminal prints a temporary admin password. Credentials remain in process memory, Wrangler file logging is disabled, and the seeding API key is revoked after setup. Keep the terminal open while reviewing. Remove an existing `.dev.vars` first if it overrides process environment credentials. No remote deployment is performed.

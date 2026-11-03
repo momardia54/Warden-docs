@@ -4,7 +4,7 @@ layout: home
 hero:
   name: Warden
   text: Licences and updates for the sites you sell
-  tagline: A self-hosted licence manager on Cloudflare Workers, D1 and R2. Give every licence a key and a check URL, control its status, its sites and its downloads, and publish updates from a dashboard, an API or a GitHub tag.
+  tagline: A self-hosted licence manager on Cloudflare Workers, D1 and R2. Give each customer one key for multiple apps, with independent statuses, shared or separate expiry dates, and releases published from the dashboard, API or GitHub.
   actions:
     - theme: brand
       text: Get started
@@ -21,10 +21,18 @@ features:
     details: The customer's site calls its check URL and reads valid, status and message, in a signed response. Enforcement stays in your code, so you decide what an invalid licence does.
     link: /guide/checking
     linkText: Checking a licence
-  - title: Apps and site limits
-    details: Sell a product to many customers with defaults for every new licence, or license a single project. Limit how many sites a licence may run on.
+  - title: One key for multiple apps
+    details: Attach a parent theme, child theme and plugins under stable tags. Each app has its own status; every app on the same domain shares one licence site slot.
     link: /guide/apps
-    linkText: Apps
+    linkText: Apps and licences
+  - title: Shared or separate expiry
+    details: Renew every attached app using one shared date, or give each app its own expiry date and renewal. Permanent statuses can ignore expiry.
+    link: /guide/apps#creating-a-licence
+    linkText: Expiry modes
+  - title: Licence templates
+    details: Prepare required and optional tag slots, preselect shared apps and choose the customer's custom apps when issuing a licence. Existing licences keep their settings when a template changes.
+    link: /guide/apps#licence-templates
+    linkText: Templates
   - title: Statuses you define
     details: Pending, Active, Completed and more, or your own, each with an expiry rule, a colour and a message to the site.
     link: /guide/statuses

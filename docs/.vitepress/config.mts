@@ -55,7 +55,7 @@ export default defineConfig({
         text: "Guides",
         items: [
           { text: "Checking a licence from a site", link: "/guide/checking" },
-          { text: "Apps and site limits", link: "/guide/apps" },
+          { text: "Apps, licences and templates", link: "/guide/apps" },
           { text: "Statuses", link: "/guide/statuses" },
           { text: "Files and release rules", link: "/guide/files" },
           { text: "Releases and updates", link: "/guide/releases" },

@@ -6,12 +6,76 @@ All notable changes, newest first. Warden follows [semantic versioning](https://
 
 **Next, towards 1.0.0** (details in [Roadmap](./roadmap.md)):
 
-- **0.5.0, trust**: end-to-end tests on real Cloudflare (GitHub App, private repositories, phone width, CI), backups and export, two-factor sign-in or Cloudflare Access, a complete OpenAPI description checked by tests, independent security review
+- **0.6.0, trust**: end-to-end tests on real Cloudflare (GitHub App, private repositories, phone width, CI), backups and export, two-factor sign-in or Cloudflare Access, a complete OpenAPI description checked by tests, independent security review
 - **1.0.0**: the check response and the API are frozen
 
-## 0.5.0 (unreleased)
+## 0.5.1 (2026-11-03)
 
-Not released yet: on the `develop` branch.
+Bug fixes for 0.5.0. No migration and no API change.
+
+### Fixed
+
+- The licence page again has tabs (Apps, Integration, Sites, Activity) and a summary of check results, next expiry, sites and last check. Restored from 0.4: the details panel (expiry mode, allowed domains, site limit, grace override, public message, external reference, creation date, notes), the download list URL and example request, activity filters, blocked addresses and the update badges per reported version. Each app card shows its check result, expiry, grace period, last check and latest release; the status button shows when a change is being saved and errors appear on the card. The public signing key is on the Integration tab, as before 0.5.0.
+- A check without a tag on a licence with several apps registered the domain and counted the site's check once per app. It now registers the domain once, reads the status sets and sites once, and records every app's check in one database batch.
+- The page of an app now lists the project apps created from it by migration 0016, so licences that moved to a project app can be found from the original app. The project app's page loads its inherited releases in parallel with the rest.
+- `npm run review` seeded the wrong server when port 5180 was already in use. It now stops instead, and `REVIEW_PORT` selects another port.
+- `Licence.md` again lists both copyright holders, as the MIT licence requires.
+- Licence and template tag inputs used a pattern that modern browsers could not compile under HTML's Unicode sets rules. Both forms now use the shared server validation pattern with an escaped hyphen, restoring native input validation for tags such as `parent-theme` and `child_theme`. Existing tags, API validation rules and database data are unchanged. No migration is required.
+
+## 0.5.0 (2026-11-03)
+
+One licence key for several tagged apps, with shared or separate expiry dates and reusable licence templates. Migration 0016 runs on the first request. Read the [0.4 to 0.5 upgrade notes](../upgrade-notes.md) before updating API clients or attaching a second app to an existing licence.
+
+### Added
+
+- One licence key can cover up to 50 apps. Each attachment has a unique tag, its own selected status, public message and grace override.
+- Shared or separate expiry dates; renewal extends every app in shared mode or the selected tag in separate mode.
+- Licence templates prefill tags and optional default apps, with required and optional slots. Editing a template leaves existing licences intact.
+- Tag-scoped checks, downloads, update selection, reported versions, activity and webhook events. Checks without a tag return separate app results for multi-app licences.
+- `npm run review` starts a local instance with demonstration apps, releases, templates and both expiry modes. Credentials stay in process memory.
+
+### Fixed
+
+- The local review command disables Wrangler file logging directly. A null-device log path was interpreted as a directory and caused an additional startup error.
+
+### Changed
+
+- Apps own status definitions, files, release tracks and repository connections. The dashboard no longer creates standalone licences or licence-owned releases.
+- Migration 0016 converts existing standalone projects to apps, preserving licence keys, file ids, checksums, R2 keys and download URLs. Custom licence releases become project apps that continue inheriting their original app's releases for statuses they do not override. No stored packages are copied or deleted.
+- New licence API requests use `apps: [{ tag, app, status?, expires_at? }]` and `expiry_mode`; their responses contain `apps` rather than a top-level status or validity. Select `tag` on checks and downloads, and send it when changing a status or renewing separate expiry. See [upgrade notes](../upgrade-notes.md).
+- The old singular `app`, status and licence-owned resource API remains available for legacy requests until 1.0. Migrated licences use the new model; their resource writes return `409 app_owned`. Manage releases and status definitions on their apps.
+- Site limits count domains once across all attached apps. Installed versions are recorded per tag. CSV exports have one row per attached app, adding tag and expiry mode.
+- Licence list validity means every attached app is valid; invalid includes licences with any invalid app. Expiring and silent views match any app.
+
+## 0.4.1 (2026-10-28)
+
+Bug fixes. Migration 0015 runs by itself on the first request; nothing to change on your side.
+
+### Fixed: dashboard speed
+
+- **Pages took several database round trips one after another.** The queries of each page are now sent together, and the status sets are read once per request instead of once per section: the overview, apps, app, analytics and licence pages wait for about half as many round trips as before.
+- **The Worker now uses Smart Placement** (`wrangler.jsonc`, available on every plan): Cloudflare may run it close to the database rather than close to the visitor, which shortens each of those round trips. It takes effect on the next deploy.
+- The sidebar marks the page you clicked at once, instead of dimming the previous one until the new page has loaded. Links to apps and licences on the overview and apps pages load their data on hover, as the sidebar and the licence list already did.
+
+### Fixed: releases and webhooks
+
+- **Uploading from the dashboard ignored the track chosen in the upload dialog.** For an app or licence with several tracks, every upload was refused with "choose a track".
+- **A version could be published twice in the same track** by uploading it again, by changing a release's version or track, or by restoring a withdrawn release. These now return `409` naming the release that holds the version (`1.4.0` and `v1.4.0` count as the same version); withdraw or delete that release first. Releases already duplicated are left as they are.
+- A tag whose build metadata contains a hyphen (`v1.4.0+build-7`) was published on the beta channel; only a pre-release suffix (`v1.4.0-rc.1`) selects beta.
+- **Expiry events could be delayed indefinitely.** Each scheduled run looked at the first 500 expired licences, including licences in their grace period that had nothing left to report, so with many of those the expiry of others was never reported. The scan now selects only licences with an event due.
+- The scheduled run delivers at most 40 webhooks per run (was 100), under the free plan's limit of 50 outgoing requests per invocation; the rest go out in the next runs.
+- Deleting a licence, an app or a repository connection while an import was in progress left the partly written package in R2.
+- The overview's "Needs attention" list said "Expires 8 days ago" for a licence in its grace period; it now says "Expired 8 days ago, in grace period".
+
+### Fixed: publishing from GitHub
+
+- **Publishing a large repository stopped the Worker** ("exceeded CPU time limit" or "exceeded memory limit"), on the Workers free plan from a few megabytes. An import used to hold the whole archive in memory twice and hash it chunk by chunk. It now streams the archive into R2 in 10 MB parts, repacks it part by part straight into the release's file and hashes each part once: a 46 MB WordPress archive takes about 0.2 s of CPU instead of being stopped at 1.7 s, with memory flat whatever the size ([Publishing releases from a repository](../guide/repositories.md#limits)).
+- **Uploads** (dashboard and API) are stored first, then hashed in 10 MB blocks, instead of hashed chunk by chunk as they arrived, which used most of the CPU time of large uploads.
+- **Imports resume after a stop.** Each step of an import records its progress (migration 0015). If Cloudflare stops one midway, the scheduled run (every 10 minutes) continues it from the last part written, rather than the import failing after 15 minutes. An import is failed after 3 runs without progress or 6 hours in progress. While in progress, an import's `detail` names the current step.
+
+### Changed
+
+- A repository archive whose local file headers do not repeat the names of its central directory is refused as unsupported. GitHub archives are not affected.
 
 ## 0.4.0 (2026-10-11)
 

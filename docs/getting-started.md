@@ -37,11 +37,9 @@ Check URLs end up in your customers' sites, so give Warden an address you contro
 
 ## 4. Issue a licence
 
-1. **Create an app** for a product you sell to several customers, such as a theme. Its defaults (starting status, duration, site limit) apply to every licence you issue under it. For a one-off client project, skip this and create a standalone licence.
+1. **Create an app** for each product or custom project, such as a parent theme and a customer-specific child theme. Configure their statuses and releases on the apps.
 2. **Issue a licence**: *Issue licence* on the app, or *New licence*. Enter the customer and, if you want, allowed domains or a site limit.
-3. Open the licence and copy its **check URL** from the *Overview* tab.
-
-![A licence page](/screenshots/licence.jpg)
+3. Open the licence and copy its **check URL** for each tagged app.
 
 ## 5. Check it from the site
 
@@ -49,7 +47,7 @@ Add a check to the product's code, scheduled about every 12 hours. In WordPress:
 
 ```php
 function harbor_licence_check( $key ) {
-    $url = 'https://licences.example.com/check/' . rawurlencode( $key ) . '?domain=' . rawurlencode( wp_parse_url( home_url(), PHP_URL_HOST ) );
+    $url = 'https://licences.example.com/check/' . rawurlencode( $key ) . '?tag=parent-theme&domain=' . rawurlencode( wp_parse_url( home_url(), PHP_URL_HOST ) );
     $res = wp_remote_get( $url, [ 'timeout' => 10 ] );
     if ( is_wp_error( $res ) || wp_remote_retrieve_response_code( $res ) >= 500 ) {
         return null; // Warden unreachable: keep the last known result.
@@ -58,7 +56,7 @@ function harbor_licence_check( $key ) {
 }
 ```
 
-This minimal version trusts any answer. Before shipping, have the site verify the answer's signature with your installation's **public signing key** (licence page, *Integration* tab, *Public signing key*): copy the key into the site's code once, and it then rejects answers that did not come from your Warden.
+This minimal version trusts any answer. Before shipping, have the site verify the answer's signature with your installation's **public signing key** (licence page, *Integration* section): copy the key into the site's code once, and it then rejects answers that did not come from your Warden.
 
 Decide in the code what an invalid licence does. Keep the last valid result when Warden cannot be reached, so an outage never takes a customer's site down. [Checking a licence from a site](/guide/checking) covers the response in full, signature verification and JavaScript.
 
@@ -68,3 +66,9 @@ Decide in the code what an invalid licence does. Keep the last valid result when
 - Connect your payment tool: create an [API key](/reference/api#authentication) and create or renew licences from its webhooks.
 - Shape the lifecycle: [Statuses](/guide/statuses) and [Files and release rules](/guide/files), for example a final build released only when a client has paid in full.
 - Before going live, read [Security](/project/security) and its hardening checklist.
+
+## Multiple apps and templates
+
+Attach apps to the licence under tags such as `parent-theme` and `child-theme`. Choose a selected status for each app. Shared expiry uses one date for every app; separate expiry uses one date per attachment. The domain limit is shared, so parent and child themes on the same site consume one slot.
+
+For repeated setups, create a licence template with these tags. It can preselect the parent theme and leave the child theme app for you to choose. [Apps and licences](/guide/apps) explains templates, renewal and migration.

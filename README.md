@@ -2,6 +2,8 @@
 
 The documentation website of [Warden](https://github.com/momardia54/Warden), built with [VitePress](https://vitepress.dev).
 
+The current `develop` documentation covers **Warden 0.5.1 (next patch)**, including the 0.5.0 model: multiple tagged apps under one licence key, shared or separate expiry dates, templates and migration from standalone licences. The public site continues to follow Warden's `main`; a build tag alone does not change its release guard.
+
 ## Where the content lives
 
 | Pages | Source |

@@ -22,8 +22,8 @@ The public endpoints and the API never use cookies.
 ## Request flow of a check
 
 1. The guard looks up the caller's address in the IP blocklist (cached for 30 seconds per instance) and applies the rate limits. A blocked caller receives 403, a limited one 429, before any licence is read.
-2. The licence is read by its key, with the status set that applies to it (its app's, its own, or the defaults).
-3. The effective status is computed: the stored status, or the status its expiry rule points to once the expiry date and the grace period have passed.
+2. The licence is read by its key. Its tag selects an app attachment, or all attachments when omitted. Each uses its app's status definitions.
+3. Each attachment's effective status is computed: the stored status, or the status its expiry rule points to once the shared or separate expiry date and the effective grace period have passed.
 4. The domain is checked against the allowed domains and the site limit.
 5. When the site sent `?version=`, the newest release it may download is compared with it.
 6. The response, which names the licence key, the domain and the site's nonce, is signed with the installation's Ed25519 key (`X-Warden-Signature-Ed25519` over the raw body, with `X-Warden-Key-Id`; the deprecated HMAC header is still added until 1.0.0) and returned. The check, a newly registered site and the caller's address are recorded after the response is sent, and the blocking rules are evaluated then.
@@ -32,11 +32,14 @@ The public endpoints and the API never use cookies.
 
 | Table | Holds |
 |---|---|
-| `licenses` | Key, status, expiry date, grace period, allowed domains, site limit, app, customer, public message, internal notes. |
+| `licenses` | Key, expiry mode and shared date, grace override, allowed domains, shared site limit, customer and notes. Legacy columns remain for compatibility. |
+| `license_apps` | Tagged app attachments, selected statuses, separate expiry dates, grace/message overrides and event markers. |
+| `license_templates` | Reusable tag slots, optional default apps and expiry mode. |
+| `activation_versions` | Installed version per attachment and domain. |
 | `apps` | Products, with defaults for new licences and a grace period for all of their licences. |
-| `statuses` | Custom status sets of an app or a standalone licence. No rows means the built-in defaults. |
-| `files` | Files and releases of a licence or an app: release rule, version, channel, release notes, SHA-256, withdrawal. |
-| `activations` | Sites registered by checks, with the version and address each reported last. |
+| `statuses` | App status definitions. No rows means built-in defaults. Legacy API-created standalone sets remain supported until 1.0. |
+| `files` | App-owned files and releases: release rule, version, channel, release notes, SHA-256, withdrawal. |
+| `activations` | Shared domain slots, with the last caller address. Per-tag versions live in activation_versions. |
 | `activity` | Checks, downloads and changes per licence. Checks are kept 90 days. |
 | `api_keys` | SHA-256 hashes of API keys, with their scope. |
 | `sessions`, `login_attempts` | Dashboard sign-in. |
@@ -69,3 +72,5 @@ tests/                          node:test suites
 ```
 
 The source is on [GitHub](https://github.com/momardia54/Warden).
+
+Migration 0016 moves standalone projects and licence-owned releases to project apps. A migrated project app can inherit a base app's releases for statuses not overridden by its own tracks, preserving earlier custom-build behaviour without copying R2 objects. Checks sign the selected app and tag as well as the key, domain and nonce.

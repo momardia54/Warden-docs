@@ -11,6 +11,7 @@ Add them under *Workers & Pages*, your Worker, *Settings*, *Variables and Secret
 | `ADMIN_USERNAME` | Yes | The dashboard's single admin account. |
 | `ADMIN_PASSWORD` | Yes | At least 12 characters; the dashboard warns about shorter ones. Changing it ends every session. |
 | `SESSION_SECRET` | Recommended | Keys the fingerprint that ties sessions to the admin login, and the hashed addresses used to throttle failed sign-ins. Without it, a value derived from the admin login is used. Generate one with `openssl rand -hex 32`. |
+| `WARDEN_SIGNING_KEY` | Optional | Holds the Ed25519 signing key so that it does not have to stay in the database. Copy the stored key into it, then follow [The signing key](/guide/checking#the-signing-key) before removing the database copy. |
 
 After changing a secret, Cloudflare deploys a new version of the Worker; sign-in can fail for about 20 seconds while it propagates.
 

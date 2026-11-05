@@ -26,7 +26,18 @@ A track is what a set of licence statuses receives. An app has one or more track
 - Each tagged app attachment follows its app's tracks, selected by its own status. Migrated custom project apps retain their old release overrides and inherit the original app's tracks for other statuses. New custom projects use an app of their own.
 - A status that no track serves receives no update.
 
-Create, rename and delete tracks on the *Releases* tab (*New track*, and the track's menu). Changing a track's statuses applies to all its releases at once. Deleting a track moves its releases to another track first.
+Create, rename and delete tracks on the *Releases* tab (*New track*, and the track's menu). Changing a track's statuses applies to all its releases at once. Deleting a track moves its releases to another track first. A track can also limit how many releases it keeps ([below](#release-limit)).
+
+### Release limit
+
+A track that publishes often grows without end. Give it a **release limit** (*Edit track*, *Keep the newest releases*) and Warden deletes the oldest releases, with their files, beyond that number:
+
+- It runs **whenever a release is added** (upload, API or repository import) and **when you lower the limit**. The edit dialog lists the releases that saving would delete, and the button says how many. Deleting cannot be undone; download anything you want to keep first.
+- "Oldest" is by **version**, not upload date: `1.10.0` is newer than `1.9.2`. Withdrawn releases count towards the limit.
+- The **newest stable release and the newest beta release are never deleted**, whatever the limit, because they are what sites are offered.
+- The release you have just added is kept even when its version is older than the others (a hotfix of an old line). The track then holds one more than its limit until the next release is added.
+- A repository import does not publish a deleted version again: the tag stays recorded as imported.
+- Leave the limit empty (the default) to keep every release. Attachments and other tracks are never touched. The limit is a whole number from 1 to 1000.
 
 Files without a version (attachments) are not in a track: each one keeps its own release rule ([Files](./files.md)).
 
@@ -81,7 +92,7 @@ GET https://<your-worker>/check/<licence key>?tag=parent-theme&domain=harborstud
       "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       "signature": "<Ed25519 signature of sha256, base64>",
       "released_at": "2026-10-08T14:03:11.000Z",
-      "download_url": "https://<your-worker>/download/WRD-.../fil_...?domain=harborstudio.com"
+      "download_url": "https://<your-worker>/download/t/eyJsIjoi..."
     }
   }
 }
@@ -89,7 +100,7 @@ GET https://<your-worker>/check/<licence key>?tag=parent-theme&domain=harborstud
 
 - `latest` is the newest release this licence can download **right now**, for this domain, in the site's channel: the release rule is applied exactly as for a download. A suspended licence is offered nothing; a release published only for Completed licences is offered once the licence is Completed.
 - `available` is `true` when `latest` is newer than `current`.
-- `download_url` already carries the domain, so the site can fetch it as is.
+- `download_url` is a signed download link valid for 7 days ([Files](./files.md#download-links)). It carries the tag and domain and does not contain the licence key, so the site can hand it to its updater as is.
 - Add `&channel=beta` to receive beta releases too.
 - The whole response, `update` included, is signed with the installation's Ed25519 key ([Checking a licence from a site](./checking.md#verifying-the-signature)).
 - The `update` block appears only when the site sends a valid `version`. Older site code that does not send one gets the same response as before.
@@ -100,21 +111,33 @@ The same fields can be sent in a POST body: `{ "tag": "parent-theme", "domain": 
 
 ## Knowing which versions are installed
 
-The version a site sends is recorded with the site (its activation). The dashboard shows it:
+The version and channel a site sends are recorded with the site, per attached app, including while its licence is invalid. A site is compared with the release its own check offers: the latest release of the track serving its licence's status, on the channel the site checks. Each site has exactly one state:
 
-- On a **licence**, the *Sites* tab lists each site with its version, and marks sites behind the latest release.
-- On an **app**, the *Releases* tab shows which versions the app's sites run and how many are outdated.
+| State | Meaning |
+|---|---|
+| Up to date | On the latest offered release, or newer |
+| Behind | On an older version than the latest offered release |
+| No release for this status | The status of the licence receives no release, so there is nothing to compare with |
+| Not reported | The site never sent a version |
 
-Through the API: `GET /api/v1/licenses/{id}/activations` returns each site's `version`, and `GET /api/v1/apps/{app}/versions` returns the distribution:
+- On a **licence**, the *Sites* tab lists each site with its version and state.
+- On an **app**, the *Releases* tab shows which versions the app's sites run and how many sites are in each state. Equal versions written differently (`v1.4`, `1.4.0`) share a row.
+
+A site checks about every 12 hours, so a site updated a moment ago stays behind until its next check.
+
+Through the API: `GET /api/v1/licenses/{id}/activations` returns each site's `versions` by tag (and `version` when one app is attached), and `GET /api/v1/apps/{app}/versions` returns the distribution:
 
 ```json
 {
   "latest_version": "1.4.0",
   "sites": 12,
   "outdated": 3,
+  "up_to_date": 9,
+  "no_release": 0,
+  "not_reported": 0,
   "data": [
-    { "version": "1.4.0", "sites": 9, "outdated": false },
-    { "version": "1.3.0", "sites": 3, "outdated": true }
+    { "version": "1.4.0", "sites": 9, "behind": 0, "up_to_date": 9, "no_release": 0, "outdated": false },
+    { "version": "1.3.0", "sites": 3, "behind": 3, "up_to_date": 0, "no_release": 0, "outdated": true }
   ]
 }
 ```

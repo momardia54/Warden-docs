@@ -76,7 +76,7 @@ The licence response has `id`, `key`, `check_url`, customer details, `expiry_mod
 | `POST /licenses/{id}/renew` | Shared: `{ "days": 30 }`; separate: `{ "tag": "parent-theme", "days": 30 }`. `until` may replace days |
 | `POST /licenses/{id}/regenerate-key` | Regenerate the key for every attached app |
 | `GET /licenses/{id}/activity` | Paged events, including `app_id` and `tag` |
-| `GET /licenses/{id}/activations` | Registered domains; `versions` maps tags to installed versions |
+| `GET /licenses/{id}/activations` | Registered domains; `versions` maps tags to installed versions, `version` is that value when one app is attached |
 | `DELETE /licenses/{id}/activations/{domain}` | Free the shared domain slot and clear its version reports |
 
 On PATCH, omitted `apps` preserves attachments. A supplied `apps` array replaces the complete list; omitted tags are removed. Existing tags keep their selected settings when fields are omitted. Changing the app under a tag resets its reported versions and uses the newly selected app's defaults. Dates retained while in shared mode are not effective until separate mode is selected.
@@ -116,7 +116,7 @@ Apps are referenced by id or slug. Files, tracks, status definitions and reposit
 | `GET, POST /apps` | List/create apps |
 | `GET, PATCH, DELETE /apps/{app}` | Read/edit/delete; deletion requires no licence, template or inherited-release references |
 | `GET /apps/{app}/licenses` | Licences containing this app |
-| `GET /apps/{app}/versions` | Installed versions reported for this app's attachments |
+| `GET /apps/{app}/versions` | Installed versions reported for this app's attachments, with the sites `up_to_date`, `outdated`, `no_release` and `not_reported` |
 | `GET /statuses` | Built-in status definitions |
 | `GET /apps/{app}/statuses` | App's effective status definitions |
 | `POST /apps/{app}/statuses/customize` | Start customising |
@@ -127,7 +127,7 @@ Apps are referenced by id or slug. Files, tracks, status definitions and reposit
 | `GET, PUT /apps/{app}/files` | List/upload; PUT uses raw bytes and Content-Length, max 100 MB |
 | `PATCH, DELETE /apps/{app}/files/{fileId}` | Edit metadata/withdraw/delete |
 | `GET, POST /apps/{app}/tracks` | List/create release tracks |
-| `GET, PATCH, DELETE /apps/{app}/tracks/{track}` | Manage tracks; deletion can use `move_to` |
+| `GET, PATCH, DELETE /apps/{app}/tracks/{track}` | Manage tracks; deletion can use `move_to`. `keep_releases` (1–1000, or `null` for all) is the release limit: setting it deletes the oldest releases beyond it at once and the PATCH response adds `pruned`, the number deleted. New releases are pruned the same way ([Releases and updates](../guide/releases.md#release-limit)) |
 | `GET, PUT, DELETE .../tracks/{track}/source` | Repository connection |
 | `POST .../tracks/{track}/source/regenerate-secret` | Rotate repository webhook secret |
 | `GET, POST .../tracks/{track}/source/imports` | History or import `{ "tag": "v1.4.0" }` |

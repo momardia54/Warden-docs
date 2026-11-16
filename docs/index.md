@@ -38,7 +38,7 @@ features:
     link: /guide/statuses
     linkText: Statuses
   - title: Releases and updates
-    details: Upload a build with a version and every site that reports its version is offered the update, with release notes and a SHA-256 checksum. Stable and beta channels.
+    details: Upload a build with a version and every site that reports its version is offered the update, with release notes and a SHA-256 checksum. Channels per track, each able to follow its own repository branch.
     link: /guide/releases
     linkText: Releases
   - title: Publishing from GitHub

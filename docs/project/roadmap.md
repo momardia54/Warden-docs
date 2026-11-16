@@ -2,7 +2,7 @@
 
 # Roadmap
 
-Warden is **pre-1.0** (current version: 0.6.2, 2026-11-06; next milestone: 0.7.0). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways. The Deploy button installs `main`; the approved `develop` build becomes the default after its release pull request is merged.
+Warden is **pre-1.0** (current version: 0.6.3, 2026-11-11; next milestone: 0.7.0). The data model, the check response and the `/api/v1` endpoints can still change between 0.x versions; changes are listed in [Changelog](./changelog.md). Version 1.0.0 means the check response and API are stable and only change in backward compatible ways. The Deploy button installs `main`; the approved `develop` build becomes the default after its release pull request is merged.
 
 This is a plan, not a promise. Order can change.
 
@@ -63,6 +63,15 @@ Version 0.5.0 is prepared on `develop`. A version tag identifies the approved bu
 - [x] A track keeps the newest N releases; older ones are deleted with their files when a release is added or the limit is lowered (migration 0017)
 - [ ] Select several releases in a track and delete them in one step
 - [ ] A default release limit for tracks that are created automatically on the first upload
+
+### Release labels (unreleased, version not chosen)
+
+- [x] Labels with colours defined per track; releases carry them and sites receive them in `labels` (migration 0019)
+- [x] Replaces the 0.6.3 `[urgent]` marker in release notes
+
+### 0.6.3: mark a release as urgent (2026-11-11)
+
+- [x] Mark as urgent in a release's menu (replaced by release labels)
 
 ### 0.6.2: faster page changes (2026-11-06)
 

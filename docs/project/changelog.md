@@ -6,8 +6,55 @@ All notable changes, newest first. Warden follows [semantic versioning](https://
 
 **Next, towards 1.0.0** (details in [Roadmap](./roadmap.md)):
 
-- **0.7.0, trust**: end-to-end tests on real Cloudflare (GitHub App, private repositories, phone width, CI), backups and export, two-factor sign-in or Cloudflare Access, a complete OpenAPI description checked by tests, independent security review
+- **0.9.0, trust**: end-to-end tests on real Cloudflare (GitHub App, private repositories, phone width, CI), backups and export, two-factor sign-in or Cloudflare Access, a complete OpenAPI description checked by tests, independent security review
 - **1.0.0**: the check response and the API are frozen
+
+## 0.8.0 (2026-11-15)
+
+Channels per track, each following its own repository and branch. Migration 0020 runs by itself. Sites built for earlier versions keep working unchanged. See [Upgrade notes](../upgrade-notes.md).
+
+### Added
+
+- **Channels defined per track.** *Edit track*, *Channels*: Stable (fixed) and Beta by default, plus channels you add, such as Release candidate or Nightly, up to 10. A channel can also receive the releases of other channels (Beta includes Stable). Sites ask for a channel with `?channel=<key>`; no channel, or one the track does not have, gives Stable, exactly as before. A channel with releases or a repository cannot be removed. API: track `channels: [{ key, name, includes }]`. See [Releases and updates](../guide/releases.md#channels).
+- **A repository and branch per channel.** Each channel of a track can follow its own repository, or the same repository on its own branch: Stable follows `main`, Beta follows `beta`. A pushed tag publishes on the channel whose branch contains its commit (Warden asks GitHub); a tag on no followed branch publishes nothing. API: `?channel=` on every `/tracks/{track}/source` path, `branch` on the source, and `sources` on the track. See [Publishing releases from a repository](../guide/repositories.md#channels-and-branches).
+
+### Changed
+
+- **The release limit keeps the newest release of every channel**, not only of stable and beta.
+- **`channel` of a release, an upload and a check is any channel of the track**, no longer only `stable` or `beta` (the OpenAPI description drops the enum). Existing values are unchanged.
+- **A token webhook for one channel ignores tags that belong to another channel** of the same repository, and says so in its answer.
+
+## 0.7.0 (2026-11-15)
+
+Release labels replace the urgent marker of 0.6.3. Migration 0019 runs by itself. See [Upgrade notes](../upgrade-notes.md).
+
+### Added
+
+- **Release labels.** Each track defines labels with a name and a colour (*Edit track*, *Release labels*); a new track starts with Urgent, Security, Bug fix and New feature. A release carries any number of its track's labels, chosen at upload, in *Edit* or from the release's menu (*Labels*), and shown as coloured badges. Sites receive the keys in `labels` with the release: in `update.latest` of the check answer, and in `latest` and `files` of the download list. A label's key is made from its name and fixed once saved. Removing a label from a track removes it from its releases; a release moved to another track keeps the labels that track also has. API: upload `labels=urgent,security`, file `PATCH { "labels": [...] }`, track `labels: [{ key, name, color }]`. See [Releases and updates](../guide/releases.md#release-labels).
+
+### Removed
+
+- **Mark as urgent**, and the `[urgent]` marker in release notes, which 0.6.3 added. Use the Urgent label. Migration 0019 gives every release whose notes contain `[urgent]` the Urgent label and takes out the marker the button added. **Site code that looks for `[urgent]` in `changelog` must read `labels` instead**: `in_array('urgent', $latest['labels'])`.
+
+## 0.6.3 (2026-11-11)
+
+### Added
+
+- **Mark a release as urgent.** A release's menu has **Mark as urgent** (and **Remove urgent mark**). It adds `[urgent]` on its own line to the release notes and saves, and the release shows an **Urgent** badge while the notes carry it. Warden has no separate flag: sites read the marker in the notes they are sent (`changelog`), and a site that stages its updates, such as the Dev Base theme, installs an urgent release at once instead of waiting for its share of the rollout window. Typing `[urgent]` in the notes by hand does the same, and shows the badge too.
+
+## 0.6.2 (2026-11-06)
+
+### Changed
+
+- **Moving between dashboard pages is faster.** Hovering a link already loaded its page, but `no-store` made the browser discard that and load it again on the click. Page data may now stay in the browser for 10 seconds, so the click usually needs no request. Any change or logout sets a new `wd_rev` cookie, and `Vary: Cookie` then rules out everything kept, so a change is never followed by old data.
+- **One trip to the database less when a Worker instance starts:** it reads the migrations table without creating it first.
+- **The loading bar appears after 300 ms**, up from 100, so an ordinary page change shows none.
+
+## 0.6.1 (2026-11-06)
+
+### Fixed
+
+- **Requests no longer wait forever after a cancelled request.** The migration check and the signing key were shared between requests as promises owned by the first one. When that client disconnected, the promise could never settle, and later requests in the same Worker instance, including checks and downloads, waited until the client gave up. Each request now does its own work until one finishes, and only the finished result is kept.
 
 ## 0.6.0 (2026-11-05)
 

@@ -6,6 +6,10 @@ Warden follows semantic versioning. Until 1.0.0, a minor version (0.x.0) can cha
 
 Your install's version is shown in the dashboard's account menu and in `/api/v1/openapi.json`.
 
+## Builds 0.6.1 and 0.6.2
+
+Version 0.6.1 stops requests waiting forever after a cancelled request, including checks and downloads. Version 0.6.2 makes moving between dashboard pages faster. There is no migration and site code needs no change.
+
 ## Build 0.6.0
 
 Version 0.6.0 adds a release limit per track and an optional Worker secret for the signing key, and corrects outdated and up-to-date sites. Migrations run by themselves and site code needs no change. Read the [upgrade notes](/upgrade-notes) before upgrading.

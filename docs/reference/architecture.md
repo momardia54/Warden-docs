@@ -38,14 +38,15 @@ The public endpoints and the API never use cookies.
 | `activation_versions` | Installed version per attachment and domain. |
 | `apps` | Products, with defaults for new licences and a grace period for all of their licences. |
 | `statuses` | App status definitions. No rows means built-in defaults. Legacy API-created standalone sets remain supported until 1.0. |
-| `files` | App-owned files and releases: release rule, version, channel, release notes, SHA-256, withdrawal. |
+| `release_tracks` | Release tracks: the statuses they serve, release limit, labels and channels (JSON). |
+| `files` | App-owned files and releases: release rule, version, channel, labels, release notes, SHA-256, withdrawal. |
 | `activations` | Shared domain slots, with the last caller address. Per-tag versions live in activation_versions. |
 | `activity` | Checks, downloads and changes per licence. Checks are kept 90 days. |
 | `api_keys` | SHA-256 hashes of API keys, with their scope. |
 | `sessions`, `login_attempts` | Dashboard sign-in. |
 | `ip_blocks`, `ip_events`, `refused_requests` | IP blocklist, events read by the blocking rules, counts of blocked and rate-limited requests. |
 | `settings` | Protection settings, the GitHub App's credentials, and the signing key (private key as a JWK; only the public key is ever shown). |
-| `release_sources`, `source_imports` | Connected repositories and the tags they published. |
+| `release_sources`, `source_imports` | Connected repositories, one per channel of a track (with the branch it follows), and the tags they published. |
 | `webhooks`, `webhook_deliveries` | Outgoing webhooks, and the outbox of their deliveries with each one's state and last result. |
 
 Migrations are bundled into the Worker and applied on the first request after a deploy.
